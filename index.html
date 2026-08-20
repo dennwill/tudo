@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>tudo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header id="titlebar">
+    <div class="title-area">
+      <img class="project-icon" src="assets/icon.png" alt="tudo" />
+      <h1>tudo</h1>
+    </div>
+    <div id="window-controls">
+      <button id="btn-min" title="Minimize">&#8211;</button>
+      <button id="btn-close" title="Hide">&#10005;</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <section class="col" data-status="todo">
+      <div class="col-head">
+        <div class="col-title"><span class="icon-dot dot-todo"></span> To-do</div>
+        <span class="count" id="count-todo">0</span>
+      </div>
+      <ul class="card-stack" id="list-todo" data-status="todo"></ul>
+      <div class="add-issue-zone" data-status="todo">
+        <button class="new-btn">+ Add issue</button>
+        <form class="add-form" hidden>
+          <input type="text" class="add-title" placeholder="Task title..." maxlength="200" />
+        </form>
+      </div>
+    </section>
+
+    <section class="col" data-status="doing">
+      <div class="col-head">
+        <div class="col-title"><span class="icon-dot dot-doing"></span> Doing</div>
+        <span class="count" id="count-doing">0</span>
+      </div>
+      <ul class="card-stack" id="list-doing" data-status="doing"></ul>
+      <div class="add-issue-zone" data-status="doing">
+        <button class="new-btn">+ Add issue</button>
+        <form class="add-form" hidden>
+          <input type="text" class="add-title" placeholder="Task title..." maxlength="200" />
+        </form>
+      </div>
+    </section>
+
+    <section class="col" data-status="done">
+      <div class="col-head">
+        <div class="col-title"><span class="icon-dot dot-done"></span> Done</div>
+        <span class="count" id="count-done">0</span>
+      </div>
+      <ul class="card-stack" id="list-done" data-status="done"></ul>
+      <div class="add-issue-zone" data-status="done">
+        <button class="new-btn">+ Add issue</button>
+        <form class="add-form" hidden>
+          <input type="text" class="add-title" placeholder="Task title..." maxlength="200" />
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div id="trash-zone">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+      <path d="M10 11v6"></path>
+      <path d="M14 11v6"></path>
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+    </svg>
+    <span>Drop to delete</span>
+  </div>
+
+  <div id="confirm-overlay" hidden>
+    <div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-message">
+      <p id="confirm-message">Delete this task?</p>
+      <label id="confirm-skip-label">
+        <input type="checkbox" id="confirm-skip" />
+        Don't ask again
+      </label>
+      <div id="confirm-actions">
+        <button type="button" id="confirm-cancel">Cancel</button>
+        <button type="button" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
