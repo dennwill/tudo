@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, Tray, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -127,3 +127,8 @@ ipcMain.handle('tasks:save', (_event, data) => {
 });
 ipcMain.on('window:minimize', () => mainWindow && mainWindow.minimize());
 ipcMain.on('window:close', () => mainWindow && mainWindow.hide());
+ipcMain.on('shell:open-external', (_event, url) => {
+  if (typeof url === 'string' && /^(https?:|mailto:)/i.test(url)) {
+    shell.openExternal(url);
+  }
+});

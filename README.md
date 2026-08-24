@@ -9,6 +9,7 @@ A tiny always-on-top desktop widget for tracking tasks. It stays on top of your 
 - Drag and drop tasks between columns
 - Set a due date and an importance level (Low, Medium, High) for each task
 - Drag a task to the trash zone to delete it, with an optional confirmation step
+- Choose from four themes: Dark Minimalist, Light Minimalist, Neo-Brutalism, and Windows 2000
 - Tray icon to show, hide, or quit the app
 - Tasks are saved automatically to a local file, so they persist between restarts
 
