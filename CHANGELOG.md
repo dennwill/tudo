@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 - 2026-08-26
+
+- Fixed dragging cards between columns and reordering within a column, which silently did nothing
+- Fixed dragging a card to the trash zone, which was broken by the same fault
+- The blue insertion line now shows where a dragged card will land
+
 ## 1.2.0 - 2026-08-26
 
 - Added an "On Hold" column between Doing and Done

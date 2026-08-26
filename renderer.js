@@ -569,6 +569,40 @@ function renderEditRow(task) {
   return row;
 }
 
+// The dragged card is excluded so the index lines up with state[] *after* the
+// card has been spliced out, which is what the drop handler works with.
+function getDropIndex(list, clientY) {
+  const cards = Array.from(list.querySelectorAll('.card:not(.dragging)'));
+  for (let i = 0; i < cards.length; i++) {
+    const rect = cards[i].getBoundingClientRect();
+    if (clientY < rect.top + rect.height / 2) return i;
+  }
+  return cards.length;
+}
+
+function showDropIndicator(list, index) {
+  document.querySelectorAll('.drop-indicator').forEach((el) => {
+    if (el.parentElement !== list) el.remove();
+  });
+
+  let indicator = list.querySelector('.drop-indicator');
+  if (!indicator) {
+    indicator = document.createElement('li');
+    indicator.className = 'drop-indicator';
+  }
+
+  const cards = Array.from(list.querySelectorAll('.card:not(.dragging)'));
+  const before = cards[index] || null;
+  if (indicator.parentElement !== list || indicator.nextElementSibling !== before) {
+    list.insertBefore(indicator, before);
+  }
+}
+
+function clearDropIndicator() {
+  document.querySelectorAll('.drop-indicator').forEach((el) => el.remove());
+  document.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
+}
+
 function setupDropZones() {
   document.querySelectorAll('.card-stack').forEach((list) => {
     list.addEventListener('dragover', (e) => {
