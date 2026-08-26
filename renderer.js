@@ -1,4 +1,10 @@
-const STATUSES = ['todo', 'doing', 'done'];
+const COLUMNS = [
+  { id: 'todo', label: 'To-do' },
+  { id: 'doing', label: 'Doing' },
+  { id: 'onhold', label: 'On Hold' },
+  { id: 'done', label: 'Done' },
+];
+const STATUSES = COLUMNS.map((c) => c.id);
 const IMPORTANCE_LEVELS = ['Not Set', 'Low', 'Medium', 'High'];
 const HANDLE_ICON = `<svg viewBox="0 0 20 20" fill="currentColor">
   <circle cx="7" cy="4" r="1.3"></circle>
@@ -23,8 +29,33 @@ const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
   <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
 </svg>`;
 
-let state = { todo: [], doing: [], done: [] };
+let state = { todo: [], doing: [], onhold: [], done: [] };
 let editingId = null;
+// Edits are held here until Save; Cancel (or opening another card) drops them.
+let editDraft = null;
+
+function openEditor(task) {
+  editingId = task.id;
+  editDraft = {
+    due: task.due || null,
+    importance: task.importance || 'Not Set',
+    additionalDescription: task.additionalDescription || '',
+  };
+}
+
+function closeEditor() {
+  editingId = null;
+  editDraft = null;
+}
+
+function toggleEditor(task) {
+  if (editingId === task.id) {
+    closeEditor();
+  } else {
+    openEditor(task);
+  }
+  render();
+}
 
 const SKIP_DELETE_CONFIRM_KEY = 'tudo-skip-delete-confirm';
 
@@ -32,6 +63,7 @@ const THEMES = [
   { id: 'dark-minimalist', label: 'Dark Minimalist' },
   { id: 'light-minimalist', label: 'Light Minimalist' },
   { id: 'neo-brutalism', label: 'Neo-Brutalism' },
+  { id: 'glassmorphism', label: 'Glassmorphism' },
   { id: 'windows-2000', label: 'Windows 2000' },
 ];
 const THEME_KEY = 'tudo-theme';
@@ -54,6 +86,91 @@ function setupThemeSelector() {
 }
 
 applyTheme(localStorage.getItem(THEME_KEY) || THEMES[0].id);
+
+const VISIBLE_COLUMNS_KEY = 'tudo-visible-columns';
+
+function loadVisibleColumns() {
+  let saved;
+  try {
+    saved = JSON.parse(localStorage.getItem(VISIBLE_COLUMNS_KEY));
+  } catch {
+    saved = null;
+  }
+  if (!Array.isArray(saved)) return STATUSES.slice();
+  const visible = saved.filter((id) => STATUSES.includes(id));
+  return visible.length ? visible : STATUSES.slice();
+}
+
+let visibleColumns = loadVisibleColumns();
+
+function applyColumnVisibility() {
+  const board = document.querySelector('.board');
+  for (const status of STATUSES) {
+    const col = board.querySelector(`.col[data-status="${status}"]`);
+    col.hidden = !visibleColumns.includes(status);
+  }
+  board.style.setProperty('--col-count', visibleColumns.length);
+  localStorage.setItem(VISIBLE_COLUMNS_KEY, JSON.stringify(visibleColumns));
+}
+
+function setupColumnsMenu() {
+  const btn = document.getElementById('columns-btn');
+  const panel = document.getElementById('columns-panel');
+
+  for (const column of COLUMNS) {
+    const label = document.createElement('label');
+    label.className = 'columns-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = column.id;
+    checkbox.checked = visibleColumns.includes(column.id);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        visibleColumns = STATUSES.filter(
+          (id) => id === column.id || visibleColumns.includes(id)
+        );
+      } else {
+        visibleColumns = visibleColumns.filter((id) => id !== column.id);
+      }
+      applyColumnVisibility();
+      syncCheckboxes();
+    });
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(column.label));
+    panel.appendChild(label);
+  }
+
+  // The last visible column can't be unchecked - an empty board is useless.
+  const syncCheckboxes = () => {
+    panel.querySelectorAll('input[type="checkbox"]').forEach((box) => {
+      box.checked = visibleColumns.includes(box.value);
+      box.disabled = box.checked && visibleColumns.length === 1;
+    });
+  };
+
+  const closePanel = () => {
+    panel.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    panel.hidden = !panel.hidden;
+    btn.setAttribute('aria-expanded', String(!panel.hidden));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target)) closePanel();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePanel();
+  });
+
+  syncCheckboxes();
+  applyColumnVisibility();
+}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -113,7 +230,7 @@ function hasContent(html) {
 
 async function init() {
   const loaded = await window.tudo.loadTasks();
-  state = { todo: [], doing: [], done: [], ...loaded };
+  state = { todo: [], doing: [], onhold: [], done: [], ...loaded };
   for (const status of STATUSES) {
     if (!Array.isArray(state[status])) state[status] = [];
     for (const task of state[status]) {
@@ -127,10 +244,12 @@ async function init() {
   setupAddZones();
   setupTrashZone();
   setupThemeSelector();
+  setupColumnsMenu();
 
   document.getElementById('btn-min').addEventListener('click', () => window.tudo.minimize());
   document.getElementById('btn-close').addEventListener('click', () => window.tudo.close());
 
+  setupUpdateCheck();
   setInterval(updateCountdowns, 1000);
 }
 
@@ -161,8 +280,7 @@ function renderTask(task, status) {
   editBtn.innerHTML = EDIT_ICON;
   editBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    editingId = editingId === task.id ? null : task.id;
-    render();
+    toggleEditor(task);
   });
   actions.appendChild(editBtn);
 
@@ -191,8 +309,7 @@ function renderTask(task, status) {
   title.className = 'card-title';
   title.textContent = task.text;
   title.addEventListener('click', () => {
-    editingId = editingId === task.id ? null : task.id;
-    render();
+    toggleEditor(task);
   });
   li.appendChild(title);
 
@@ -259,12 +376,14 @@ function renderTask(task, status) {
   handle.addEventListener('dragend', () => {
     li.classList.remove('dragging');
     document.body.classList.remove('dragging-card');
+    clearDropIndicator();
   });
 
   return li;
 }
 
 function renderEditRow(task) {
+  const draft = editDraft;
   const row = document.createElement('div');
   row.className = 'card-edit-row';
 
@@ -274,10 +393,9 @@ function renderEditRow(task) {
   const dueInput = document.createElement('input');
   dueInput.type = 'datetime-local';
   dueInput.className = 'due-input';
-  dueInput.value = task.due || '';
+  dueInput.value = draft.due || '';
   dueInput.addEventListener('change', () => {
-    task.due = dueInput.value || null;
-    persistAndRender();
+    draft.due = dueInput.value || null;
   });
 
   const importanceSelect = document.createElement('select');
@@ -286,12 +404,11 @@ function renderEditRow(task) {
     const opt = document.createElement('option');
     opt.value = level;
     opt.textContent = level;
-    if (task.importance === level) opt.selected = true;
+    if (draft.importance === level) opt.selected = true;
     importanceSelect.appendChild(opt);
   }
   importanceSelect.addEventListener('change', () => {
-    task.importance = importanceSelect.value;
-    persistAndRender();
+    draft.importance = importanceSelect.value;
   });
 
   topRow.appendChild(dueInput);
@@ -303,19 +420,13 @@ function renderEditRow(task) {
   const toolbar = document.createElement('div');
   toolbar.className = 'desc-toolbar';
 
-  let suppressDescBlur = false;
-
   const descBox = document.createElement('div');
   descBox.className = 'desc-box';
   descBox.contentEditable = 'true';
   descBox.dataset.placeholder = 'Additional description...';
-  descBox.innerHTML = task.additionalDescription || '';
+  descBox.innerHTML = draft.additionalDescription || '';
   descBox.addEventListener('input', () => {
-    task.additionalDescription = descBox.innerHTML;
-  });
-  descBox.addEventListener('blur', () => {
-    if (suppressDescBlur) return;
-    persistAndRender();
+    draft.additionalDescription = descBox.innerHTML;
   });
 
   const addToolbarButton = (cmd, label, title, onClick) => {
@@ -333,17 +444,17 @@ function renderEditRow(task) {
   addToolbarButton('bold', '<b>B</b>', 'Bold', () => {
     descBox.focus();
     document.execCommand('bold', false, null);
-    task.additionalDescription = descBox.innerHTML;
+    draft.additionalDescription = descBox.innerHTML;
   });
   addToolbarButton('italic', '<i>I</i>', 'Italic', () => {
     descBox.focus();
     document.execCommand('italic', false, null);
-    task.additionalDescription = descBox.innerHTML;
+    draft.additionalDescription = descBox.innerHTML;
   });
   addToolbarButton('underline', '<u>U</u>', 'Underline', () => {
     descBox.focus();
     document.execCommand('underline', false, null);
-    task.additionalDescription = descBox.innerHTML;
+    draft.additionalDescription = descBox.innerHTML;
   });
 
   // Electron's renderer does not implement window.prompt() (it returns
@@ -368,7 +479,6 @@ function renderEditRow(task) {
   const cancelLinkForm = () => {
     linkForm.hidden = true;
     toolbar.hidden = false;
-    suppressDescBlur = false;
     descBox.focus();
   };
 
@@ -376,7 +486,6 @@ function renderEditRow(task) {
     let url = linkInput.value.trim();
     linkForm.hidden = true;
     toolbar.hidden = false;
-    suppressDescBlur = false;
     descBox.focus();
     if (url) {
       if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) {
@@ -388,7 +497,7 @@ function renderEditRow(task) {
         sel.addRange(savedLinkRange);
       }
       document.execCommand('createLink', false, url);
-      task.additionalDescription = descBox.innerHTML;
+      draft.additionalDescription = descBox.innerHTML;
     }
   };
 
@@ -415,7 +524,6 @@ function renderEditRow(task) {
     savedLinkRange = sel && sel.rangeCount > 0 && descBox.contains(sel.anchorNode)
       ? sel.getRangeAt(0).cloneRange()
       : null;
-    suppressDescBlur = true;
     toolbar.hidden = true;
     linkForm.hidden = false;
     linkInput.value = '';
@@ -426,8 +534,38 @@ function renderEditRow(task) {
   descEditor.appendChild(linkForm);
   descEditor.appendChild(descBox);
 
+  const actions = document.createElement('div');
+  actions.className = 'card-edit-actions';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'card-edit-btn card-edit-cancel';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('mousedown', (e) => e.preventDefault());
+  cancelBtn.addEventListener('click', () => {
+    closeEditor();
+    render();
+  });
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'card-edit-btn card-edit-save';
+  saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('mousedown', (e) => e.preventDefault());
+  saveBtn.addEventListener('click', () => {
+    task.due = draft.due;
+    task.importance = draft.importance;
+    task.additionalDescription = draft.additionalDescription;
+    closeEditor();
+    persistAndRender();
+  });
+
+  actions.appendChild(cancelBtn);
+  actions.appendChild(saveBtn);
+
   row.appendChild(topRow);
   row.appendChild(descEditor);
+  row.appendChild(actions);
   return row;
 }
 
@@ -437,11 +575,18 @@ function setupDropZones() {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       list.classList.add('drag-over');
+      showDropIndicator(list, getDropIndex(list, e.clientY));
     });
-    list.addEventListener('dragleave', () => list.classList.remove('drag-over'));
+    list.addEventListener('dragleave', (e) => {
+      if (list.contains(e.relatedTarget)) return;
+      list.classList.remove('drag-over');
+      list.querySelectorAll('.drop-indicator').forEach((el) => el.remove());
+    });
     list.addEventListener('drop', (e) => {
       e.preventDefault();
-      list.classList.remove('drag-over');
+      const to = list.dataset.status;
+      const insertAt = getDropIndex(list, e.clientY);
+      clearDropIndicator();
       let payload;
       try {
         payload = JSON.parse(e.dataTransfer.getData('text/plain'));
@@ -449,12 +594,11 @@ function setupDropZones() {
         return;
       }
       const { id, from } = payload;
-      const to = list.dataset.status;
-      if (!id || !from || from === to) return;
+      if (!id || !from) return;
       const idx = state[from].findIndex((t) => t.id === id);
       if (idx === -1) return;
       const [task] = state[from].splice(idx, 1);
-      state[to].push(task);
+      state[to].splice(insertAt, 0, task);
       persistAndRender();
     });
   });
@@ -484,6 +628,7 @@ function setupTrashZone() {
   zone.addEventListener('drop', async (e) => {
     e.preventDefault();
     zone.classList.remove('drag-over');
+    clearDropIndicator();
     let payload;
     try {
       payload = JSON.parse(e.dataTransfer.getData('text/plain'));
@@ -587,6 +732,79 @@ function setupAddZones() {
       if (!titleInput.value.trim()) closeForm();
     });
   });
+}
+
+const UPDATE_RECHECK_MS = 6 * 60 * 60 * 1000;
+
+let updateStatus = 'unknown';
+
+function showUpdateState(state) {
+  const label = document.getElementById('version-label');
+  const button = document.getElementById('update-btn');
+  updateStatus = state.status;
+
+  const asButton = (text, title) => {
+    label.hidden = true;
+    button.hidden = false;
+    button.textContent = text;
+    button.title = title;
+  };
+  const asLabel = (text, title) => {
+    button.hidden = true;
+    label.hidden = false;
+    label.textContent = text;
+    label.title = title;
+  };
+
+  switch (state.status) {
+    case 'update-available':
+      button.disabled = false;
+      asButton(`Update to v${state.latest}`, `You are on v${state.current}. Click to download v${state.latest}.`);
+      break;
+    case 'downloading':
+      button.disabled = true;
+      asButton(`Downloading ${state.percent ?? 0}%`, `Downloading v${state.latest}...`);
+      break;
+    case 'ready':
+      button.disabled = false;
+      asButton('Restart to update', `v${state.latest} is ready. Click to restart and install.`);
+      break;
+    case 'latest':
+      asLabel('Latest version', `v${state.current} is up to date`);
+      break;
+    case 'checking':
+      asLabel('Checking...', 'Checking for updates');
+      break;
+    default:
+      // Offline, rate limited, or running unpackaged: state the version without
+      // claiming anything about whether it is current.
+      asLabel(`v${state.current}`, "Couldn't check for updates");
+  }
+}
+
+async function runUpdateCheck() {
+  // A download in flight or an install waiting to run must not be reset.
+  if (updateStatus === 'downloading' || updateStatus === 'ready') return;
+  try {
+    const state = await window.tudo.checkUpdate();
+    if (state) showUpdateState(state);
+  } catch {
+    // Leave whatever the titlebar is already showing.
+  }
+}
+
+function setupUpdateCheck() {
+  document.getElementById('update-btn').addEventListener('click', () => {
+    if (updateStatus === 'update-available') {
+      window.tudo.downloadUpdate();
+    } else if (updateStatus === 'ready') {
+      window.tudo.installUpdate();
+    }
+  });
+
+  window.tudo.onUpdateState(showUpdateState);
+  runUpdateCheck();
+  setInterval(runUpdateCheck, UPDATE_RECHECK_MS);
 }
 
 async function persistAndRender() {

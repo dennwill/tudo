@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tudo</title>
+<meta name="description" content="tudo is a tiny always-on-top task board for Windows with four columns and five swappable desktop themes." />
+<link rel="icon" href="data:image/png;base64,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" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f4f5f9;
+    --surface: #ffffff;
+    --surface-2: #eceefa;
+    --text: #14151f;
+    --text-muted: #5b5f72;
+    --border: rgba(20, 22, 36, 0.11);
+    --border-strong: rgba(20, 22, 36, 0.2);
+    --accent: #5e6ad2;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(94, 106, 210, 0.1);
+    --shadow-sm: 0 1px 2px rgba(20, 22, 40, 0.05);
+    --shadow-md: 0 12px 32px rgba(20, 22, 40, 0.1);
+
+    --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0c10;
+      --surface: #15161d;
+      --surface-2: #1b1d28;
+      --text: #f3f4f8;
+      --text-muted: #9297ab;
+      --border: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.18);
+      --accent: #8b93ec;
+      --accent-ink: #0b0c10;
+      --accent-soft: rgba(139, 147, 236, 0.14);
+      --shadow-sm: none;
+      --shadow-md: 0 20px 44px rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0c10;
+    --surface: #15161d;
+    --surface-2: #1b1d28;
+    --text: #f3f4f8;
+    --text-muted: #9297ab;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --accent: #8b93ec;
+    --accent-ink: #0b0c10;
+    --accent-soft: rgba(139, 147, 236, 0.14);
+    --shadow-sm: none;
+    --shadow-md: 0 20px 44px rgba(0, 0, 0, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Meta bar ---------- */
+  .metabar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .metabar-brand { display: flex; align-items: center; gap: 9px; }
+  .metabar-icon { width: 20px; height: 20px; border-radius: 5px; }
+  .metabar-name { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+  .metabar-version {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 6px;
+  }
+  .metabar-links { display: flex; align-items: center; gap: 20px; }
+  .metabar-links a {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .metabar-links a:hover { color: var(--text); }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: 84px 0 44px; }
+  .hero-top { max-width: 640px; display: flex; flex-direction: column; gap: 18px; }
+  .hero h1 {
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.06;
+  }
+  .hero-sub {
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: 54ch;
+  }
+  .hero-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+
+  .btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border-radius: 8px;
+    padding: 11px 20px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { background: color-mix(in srgb, var(--accent) 85%, black 15%); }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--border-strong); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .hero-caption {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ---------- Demo stage ---------- */
+  .demo-section { padding: 28px 0 8px; }
+  .demo-stage {
+    --demo-radius: 8px;
+    --demo-border-w: 1px;
+    border-radius: 14px;
+    padding: clamp(20px, 4vw, 44px);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+
+  .demo-window {
+    max-width: 760px;
+    margin: 0 auto;
+    border-radius: var(--demo-radius);
+    overflow: hidden;
+    border: var(--demo-border-w) solid var(--demo-border);
+    box-shadow: var(--shadow-md);
+    background: var(--demo-bg);
+    background-image: var(--demo-bg-image, none);
+    transition: background-color 0.28s ease, border-color 0.28s ease;
+  }
+
+  .demo-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--demo-titlebar);
+    border-bottom: var(--demo-border-w) solid var(--demo-border);
+    transition: background 0.28s ease, border-color 0.28s ease;
+  }
+  .demo-titlebar-left { display: flex; align-items: center; gap: 7px; }
+  .demo-titlebar-icon { width: 15px; height: 15px; border-radius: 4px; }
+  .demo-titlebar-name {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--demo-titlebar-text, var(--demo-text));
+  }
+  .demo-titlebar-right { display: flex; gap: 6px; }
+  .demo-ctrl {
+    width: 18px;
+    height: 16px;
+    border-radius: 3px;
+    border: var(--demo-border-w) solid var(--demo-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--demo-titlebar-text, var(--demo-text-muted));
+  }
+
+  .demo-board {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 10px;
+    padding: 14px;
+    overflow-x: auto;
+    color: var(--demo-text);
+    transition: color 0.28s ease;
+  }
+  .demo-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .demo-col-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--demo-text-muted);
+    padding-bottom: 6px;
+    border-bottom: var(--demo-border-w) solid var(--demo-border);
+    transition: color 0.28s ease, border-color 0.28s ease;
+  }
+  .demo-card {
+    background: var(--demo-card);
+    border: var(--demo-border-w) solid var(--demo-border);
+    border-radius: var(--demo-radius);
+    padding: 8px 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: background 0.28s ease, border-color 0.28s ease;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .demo-card { animation: card-in 0.5s ease backwards; }
+    .demo-col:nth-child(1) .demo-card:nth-child(2) { animation-delay: 0.05s; }
+    .demo-col:nth-child(2) .demo-card:nth-child(1) { animation-delay: 0.1s; }
+    .demo-col:nth-child(2) .demo-card:nth-child(2) { animation-delay: 0.15s; }
+    .demo-col:nth-child(3) .demo-card:nth-child(1) { animation-delay: 0.2s; }
+    .demo-col:nth-child(4) .demo-card:nth-child(1) { animation-delay: 0.25s; }
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .demo-card-title {
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .demo-card-due {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--demo-text-muted);
+  }
+  .demo-badge {
+    align-self: flex-start;
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .demo-badge-high { color: #f87171; background: rgba(248, 113, 113, 0.12); }
+  .demo-badge-medium { color: #d97706; background: rgba(217, 119, 6, 0.14); }
+  .demo-badge-low { color: #059669; background: rgba(5, 150, 105, 0.12); }
+  [data-demo-theme="dark-minimalist"] .demo-badge-medium,
+  [data-demo-theme="glassmorphism"] .demo-badge-medium { color: #fbbf24; background: rgba(251, 191, 36, 0.14); }
+  [data-demo-theme="dark-minimalist"] .demo-badge-low,
+  [data-demo-theme="glassmorphism"] .demo-badge-low { color: #34d399; background: rgba(52, 211, 153, 0.14); }
+
+  /* Real token values, lifted from the app's own style.css */
+  .demo-stage[data-demo-theme="dark-minimalist"] {
+    --demo-bg: #0b0c0e; --demo-card: rgba(22, 24, 29, 0.9); --demo-titlebar: #16181d;
+    --demo-border: rgba(255, 255, 255, 0.1); --demo-text: #f7f8f8; --demo-text-muted: #8a8f98;
+    --demo-radius: 8px; --demo-border-w: 1px;
+  }
+  .demo-stage[data-demo-theme="light-minimalist"] {
+    --demo-bg: #f5f6f8; --demo-card: #ffffff; --demo-titlebar: #ffffff;
+    --demo-border: rgba(0, 0, 0, 0.1); --demo-text: #16181d; --demo-text-muted: #6b7280;
+    --demo-radius: 8px; --demo-border-w: 1px;
+  }
+  .demo-stage[data-demo-theme="neo-brutalism"] {
+    --demo-bg: #f4f1e8; --demo-card: #ffffff; --demo-titlebar: #ff3d81;
+    --demo-border: #000000; --demo-text: #0a0a0a; --demo-text-muted: #3a3a3a;
+    --demo-titlebar-text: #ffffff; --demo-radius: 0px; --demo-border-w: 2px;
+  }
+  .demo-stage[data-demo-theme="glassmorphism"] {
+    --demo-bg: #221f3f; --demo-card: rgba(255, 255, 255, 0.16); --demo-titlebar: rgba(255, 255, 255, 0.1);
+    --demo-border: rgba(255, 255, 255, 0.28); --demo-text: #ffffff; --demo-text-muted: rgba(255, 255, 255, 0.72);
+    --demo-radius: 14px; --demo-border-w: 1px;
+    --demo-bg-image: radial-gradient(circle at 12% 16%, rgba(255, 122, 190, 0.45), transparent 46%),
+      radial-gradient(circle at 88% 10%, rgba(112, 196, 255, 0.45), transparent 46%),
+      radial-gradient(circle at 50% 108%, rgba(160, 130, 255, 0.5), transparent 56%);
+  }
+  .demo-stage[data-demo-theme="windows-2000"] {
+    --demo-bg: #d4d0c8; --demo-card: #ffffff; --demo-titlebar: linear-gradient(90deg, #0a246a, #3a6ea5);
+    --demo-border: #808080; --demo-text: #000000; --demo-text-muted: #3f3f3f;
+    --demo-titlebar-text: #ffffff; --demo-radius: 0px; --demo-border-w: 1px;
+  }
+
+  .theme-picker {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .swatch:hover { color: var(--text); border-color: var(--border-strong); }
+  .swatch[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
+  .swatch-preview {
+    width: 26px;
+    height: 18px;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+  .swatch-preview span { flex: 1; }
+  .swatch[data-theme-btn="dark-minimalist"] .swatch-preview span:nth-child(1) { background: #0b0c0e; }
+  .swatch[data-theme-btn="dark-minimalist"] .swatch-preview span:nth-child(2) { background: #5e6ad2; }
+  .swatch[data-theme-btn="light-minimalist"] .swatch-preview span:nth-child(1) { background: #f5f6f8; }
+  .swatch[data-theme-btn="light-minimalist"] .swatch-preview span:nth-child(2) { background: #5e6ad2; }
+  .swatch[data-theme-btn="neo-brutalism"] .swatch-preview span:nth-child(1) { background: #f4f1e8; }
+  .swatch[data-theme-btn="neo-brutalism"] .swatch-preview span:nth-child(2) { background: #ff3d81; }
+  .swatch[data-theme-btn="glassmorphism"] .swatch-preview span:nth-child(1) { background: linear-gradient(135deg, #ff7ac2, #70c4ff); }
+  .swatch[data-theme-btn="glassmorphism"] .swatch-preview span:nth-child(2) { background: #8b7cf6; }
+  .swatch[data-theme-btn="windows-2000"] .swatch-preview span:nth-child(1) { background: #d4d0c8; }
+  .swatch[data-theme-btn="windows-2000"] .swatch-preview span:nth-child(2) { background: #316ac5; }
+
+  /* ---------- Sections ---------- */
+  section { padding: 76px 0; }
+  .section-head { display: flex; flex-direction: column; gap: 10px; max-width: 60ch; margin-bottom: 40px; }
+  .section-head h2 { font-size: clamp(24px, 3vw, 32px); }
+  .section-head p { color: var(--text-muted); font-size: 15px; }
+
+  /* Five looks gallery */
+  .look-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  .look-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--surface);
+  }
+  .look-swatch {
+    height: 54px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+  .look-swatch span { flex: 1; }
+  .look-card[data-look="dark-minimalist"] .look-swatch span:nth-child(1) { background: #0b0c0e; }
+  .look-card[data-look="dark-minimalist"] .look-swatch span:nth-child(2) { background: #1c1f26; }
+  .look-card[data-look="dark-minimalist"] .look-swatch span:nth-child(3) { background: #5e6ad2; }
+  .look-card[data-look="light-minimalist"] .look-swatch span:nth-child(1) { background: #f5f6f8; }
+  .look-card[data-look="light-minimalist"] .look-swatch span:nth-child(2) { background: #ffffff; }
+  .look-card[data-look="light-minimalist"] .look-swatch span:nth-child(3) { background: #5e6ad2; }
+  .look-card[data-look="neo-brutalism"] .look-swatch span:nth-child(1) { background: #f4f1e8; }
+  .look-card[data-look="neo-brutalism"] .look-swatch span:nth-child(2) { background: #ffffff; }
+  .look-card[data-look="neo-brutalism"] .look-swatch span:nth-child(3) { background: #ff3d81; }
+  .look-card[data-look="glassmorphism"] .look-swatch span:nth-child(1) { background: linear-gradient(135deg, #2d2a55, #4a3f77); }
+  .look-card[data-look="glassmorphism"] .look-swatch span:nth-child(2) { background: rgba(255, 255, 255, 0.35); }
+  .look-card[data-look="glassmorphism"] .look-swatch span:nth-child(3) { background: #8b7cf6; }
+  .look-card[data-look="windows-2000"] .look-swatch span:nth-child(1) { background: #d4d0c8; }
+  .look-card[data-look="windows-2000"] .look-swatch span:nth-child(2) { background: #ffffff; }
+  .look-card[data-look="windows-2000"] .look-swatch span:nth-child(3) { background: #316ac5; }
+  .look-name { font-size: 13px; font-weight: 700; }
+  .look-desc { font-size: 12.5px; color: var(--text-muted); }
+
+  /* Feature grid */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .feature {
+    background: var(--surface);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .feature h3 { font-size: 15px; font-weight: 700; font-family: var(--font-body); }
+  .feature p { font-size: 13.5px; color: var(--text-muted); }
+
+  /* Changelog */
+  .changelog { display: flex; flex-direction: column; }
+  .release {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 24px;
+    padding: 22px 0;
+    border-top: 1px solid var(--border);
+  }
+  .release:last-child { border-bottom: 1px solid var(--border); }
+  .release-meta { display: flex; flex-direction: column; gap: 4px; }
+  .release-version { font-family: var(--font-mono); font-size: 15px; font-weight: 700; }
+  .release-date { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .release-notes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .release-notes li { font-size: 13.5px; color: var(--text-muted); padding-left: 16px; position: relative; }
+  .release-notes li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 6px;
+    height: 1px;
+    background: var(--border-strong);
+  }
+
+  /* Footer CTA */
+  .footer-cta {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding-top: 20px;
+  }
+  .footer-cta h2 { font-size: clamp(26px, 4vw, 36px); }
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 22px 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  footer a { color: var(--text-muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 780px) {
+    .feature-grid { grid-template-columns: 1fr 1fr; }
+    .look-grid { grid-template-columns: repeat(3, 1fr); }
+    .demo-board { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .look-grid { grid-template-columns: repeat(2, 1fr); }
+    .release { grid-template-columns: 1fr; gap: 8px; }
+    .metabar-links { gap: 14px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="metabar">
+    <div class="metabar-brand">
+      <img class="metabar-icon" src="data:image/png;base64,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" alt="" />
+      <span class="metabar-name">tudo</span>
+      <span class="metabar-version">v1.2.0</span>
+    </div>
+    <nav class="metabar-links">
+      <a href="#themes">Themes</a>
+      <a href="#changelog">Changelog</a>
+      <a href="https://github.com/dennwill/tudo" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-top">
+        <h1>Your tasks, pinned above every window.</h1>
+        <p class="hero-sub">
+          Four columns — To-do, Doing, On Hold, Done — that stay on screen while you work.
+          Drag cards between them, reorder with a grab, and skin the board to match your desktop.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="https://github.com/dennwill/tudo/releases/latest/download/tudo-Setup.exe" target="_blank" rel="noopener">
+            Download for Windows
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/dennwill/tudo" target="_blank" rel="noopener">
+            View source on GitHub
+          </a>
+        </div>
+        <p class="hero-caption">Free &amp; open source · MIT licensed · Windows 10/11</p>
+      </div>
+    </section>
+
+    <section class="demo-section">
+      <div class="demo-stage" data-demo-theme="dark-minimalist">
+        <div class="demo-window">
+          <div class="demo-titlebar">
+            <div class="demo-titlebar-left">
+              <img class="demo-titlebar-icon" src="data:image/png;base64,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" alt="" />
+              <span class="demo-titlebar-name">tudo</span>
+            </div>
+            <div class="demo-titlebar-right">
+              <span class="demo-ctrl">&#8211;</span>
+              <span class="demo-ctrl">&#10005;</span>
+            </div>
+          </div>
+          <div class="demo-board">
+            <div class="demo-col">
+              <div class="demo-col-head"><span>To-do</span><span>2</span></div>
+              <div class="demo-card">
+                <span class="demo-card-title">Write the v1.2.0 release notes</span>
+                <span class="demo-badge demo-badge-medium">Medium</span>
+              </div>
+              <div class="demo-card">
+                <span class="demo-card-title">Test drag-and-drop on an ultrawide</span>
+              </div>
+            </div>
+            <div class="demo-col">
+              <div class="demo-col-head"><span>Doing</span><span>2</span></div>
+              <div class="demo-card">
+                <span class="demo-card-title">Wire up auto-update</span>
+                <span class="demo-card-due">Due today, 5:00 PM</span>
+                <span class="demo-badge demo-badge-high">High</span>
+              </div>
+              <div class="demo-card">
+                <span class="demo-card-title">Pick a favicon for the tray</span>
+              </div>
+            </div>
+            <div class="demo-col">
+              <div class="demo-col-head"><span>On Hold</span><span>1</span></div>
+              <div class="demo-card">
+                <span class="demo-card-title">Waiting on new tray icon art</span>
+                <span class="demo-badge demo-badge-low">Low</span>
+              </div>
+            </div>
+            <div class="demo-col">
+              <div class="demo-col-head"><span>Done</span><span>1</span></div>
+              <div class="demo-card">
+                <span class="demo-card-title">Ship the Glassmorphism theme</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="theme-picker" role="group" aria-label="Preview a theme">
+          <button class="swatch" data-theme-btn="dark-minimalist" aria-pressed="true">
+            <span class="swatch-preview"><span></span><span></span></span> Dark Minimalist
+          </button>
+          <button class="swatch" data-theme-btn="light-minimalist" aria-pressed="false">
+            <span class="swatch-preview"><span></span><span></span></span> Light Minimalist
+          </button>
+          <button class="swatch" data-theme-btn="neo-brutalism" aria-pressed="false">
+            <span class="swatch-preview"><span></span><span></span></span> Neo-Brutalism
+          </button>
+          <button class="swatch" data-theme-btn="glassmorphism" aria-pressed="false">
+            <span class="swatch-preview"><span></span><span></span></span> Glassmorphism
+          </button>
+          <button class="swatch" data-theme-btn="windows-2000" aria-pressed="false">
+            <span class="swatch-preview"><span></span><span></span></span> Windows 2000
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="themes">
+      <div class="section-head">
+        <h2>Five looks, one board.</h2>
+        <p>Switch anytime from the titlebar dropdown. Your pick is remembered between restarts.</p>
+      </div>
+      <div class="look-grid">
+        <div class="look-card" data-look="dark-minimalist">
+          <div class="look-swatch"><span></span><span></span><span></span></div>
+          <div class="look-name">Dark Minimalist</div>
+          <div class="look-desc">The default. Quiet, translucent, easy on the eyes.</div>
+        </div>
+        <div class="look-card" data-look="light-minimalist">
+          <div class="look-swatch"><span></span><span></span><span></span></div>
+          <div class="look-name">Light Minimalist</div>
+          <div class="look-desc">Same shape, daylight palette.</div>
+        </div>
+        <div class="look-card" data-look="neo-brutalism">
+          <div class="look-swatch"><span></span><span></span><span></span></div>
+          <div class="look-name">Neo-Brutalism</div>
+          <div class="look-desc">Thick borders, hard shadows, no apologies.</div>
+        </div>
+        <div class="look-card" data-look="glassmorphism">
+          <div class="look-swatch"><span></span><span></span><span></span></div>
+          <div class="look-name">Glassmorphism</div>
+          <div class="look-desc">Frosted panels over a soft gradient glow.</div>
+        </div>
+        <div class="look-card" data-look="windows-2000">
+          <div class="look-swatch"><span></span><span></span><span></span></div>
+          <div class="look-name">Windows 2000</div>
+          <div class="look-desc">Beveled buttons and a navy titlebar, for the nostalgic.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Small on purpose.</h2>
+        <p>Everything a floating task board needs, nothing it doesn't.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature">
+          <h3>Stays visible while you work</h3>
+          <p>Floats above your other windows, with a tray icon to show, hide, or quit.</p>
+        </div>
+        <div class="feature">
+          <h3>To-do, Doing, On Hold, Done</h3>
+          <p>Hide any column you don't need from the Columns menu — your choice is remembered.</p>
+        </div>
+        <div class="feature">
+          <h3>Move cards, reorder columns</h3>
+          <p>Drag a card between columns, or up and down within one to set priority order.</p>
+        </div>
+        <div class="feature">
+          <h3>Know what's next</h3>
+          <p>Set a due date and Low, Medium, or High importance, with a live countdown on the card.</p>
+        </div>
+        <div class="feature">
+          <h3>Notes, not just titles</h3>
+          <p>Add bold, italic, underlined, and linked text to any card before you save it.</p>
+        </div>
+        <div class="feature">
+          <h3>Never falls behind</h3>
+          <p>Checks for new releases on launch and installs them in place — no manual reinstall.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="changelog">
+      <div class="section-head">
+        <h2>What's new.</h2>
+      </div>
+      <div class="changelog">
+        <div class="release">
+          <div class="release-meta">
+            <span class="release-version">v1.2.0</span>
+            <span class="release-date">2026-08-26</span>
+          </div>
+          <ul class="release-notes">
+            <li>Added an On Hold column between Doing and Done</li>
+            <li>Added a Columns dropdown to show or hide any column, remembered between restarts</li>
+            <li>Cards can now be dragged up and down to reorder within a column</li>
+            <li>Editing a card now has explicit Cancel and Save buttons</li>
+            <li>Added the Glassmorphism theme</li>
+            <li>Lightened the base grey in the Windows 2000 theme</li>
+            <li>The app now checks for updates on launch and installs them in place</li>
+          </ul>
+        </div>
+        <div class="release">
+          <div class="release-meta">
+            <span class="release-version">v1.1.0</span>
+            <span class="release-date">2026-08-24</span>
+          </div>
+          <ul class="release-notes">
+            <li>Added three more themes: Light Minimalist, Neo-Brutalism, and Windows 2000</li>
+            <li>Added an optional rich-text description field, with bold, italic, underline, and link formatting</li>
+          </ul>
+        </div>
+        <div class="release">
+          <div class="release-meta">
+            <span class="release-version">v1.0.0</span>
+            <span class="release-date">2026-08-20</span>
+          </div>
+          <ul class="release-notes">
+            <li>Initial release with three columns: To-do, Doing, Done</li>
+            <li>Drag and drop tasks between columns</li>
+            <li>Due date and importance level per task</li>
+            <li>Drag-to-trash delete, with an optional confirmation step</li>
+            <li>Always-on-top window with a tray icon</li>
+            <li>Tasks saved automatically to a local file</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer-cta">
+      <h2>Pin it above your desktop.</h2>
+      <p class="hero-caption" style="max-width: 46ch; font-family: var(--font-body); font-size: 14px; color: var(--text-muted);">
+        One installer, five looks, zero subscriptions.
+      </p>
+      <a class="btn btn-primary" href="https://github.com/dennwill/tudo/releases/latest/download/tudo-Setup.exe" target="_blank" rel="noopener">
+        Download for Windows
+      </a>
+    </section>
+
+    <footer>
+      <span>MIT licensed · dennwill/tudo</span>
+      <a href="https://github.com/dennwill/tudo" target="_blank" rel="noopener">Source on GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var stage = document.querySelector('.demo-stage');
+      var buttons = document.querySelectorAll('[data-theme-btn]');
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          stage.setAttribute('data-demo-theme', btn.getAttribute('data-theme-btn'));
+          buttons.forEach(function (b) {
+            b.setAttribute('aria-pressed', String(b === btn));
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

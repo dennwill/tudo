@@ -13,8 +13,14 @@
     <div class="title-area">
       <img class="project-icon" src="assets/icon.png" alt="tudo" />
       <h1>tudo</h1>
+      <span id="version-label" class="version-label" hidden></span>
+      <button id="update-btn" class="update-btn" hidden></button>
     </div>
     <div id="window-controls">
+      <div class="columns-menu">
+        <button id="columns-btn" class="columns-btn" title="Show or hide columns" aria-haspopup="true" aria-expanded="false">Columns</button>
+        <div id="columns-panel" class="columns-panel" hidden></div>
+      </div>
       <select id="theme-select" class="theme-select" title="Theme"></select>
       <button id="btn-min" title="Minimize">&#8211;</button>
       <button id="btn-close" title="Hide">&#10005;</button>
@@ -43,6 +49,20 @@
       </div>
       <ul class="card-stack" id="list-doing" data-status="doing"></ul>
       <div class="add-issue-zone" data-status="doing">
+        <button class="new-btn">+ Add issue</button>
+        <form class="add-form" hidden>
+          <input type="text" class="add-title" placeholder="Task title..." maxlength="200" />
+        </form>
+      </div>
+    </section>
+
+    <section class="col" data-status="onhold">
+      <div class="col-head">
+        <div class="col-title"><span class="icon-dot dot-onhold"></span> On Hold</div>
+        <span class="count" id="count-onhold">0</span>
+      </div>
+      <ul class="card-stack" id="list-onhold" data-status="onhold"></ul>
+      <div class="add-issue-zone" data-status="onhold">
         <button class="new-btn">+ Add issue</button>
         <form class="add-form" hidden>
           <input type="text" class="add-title" placeholder="Task title..." maxlength="200" />
