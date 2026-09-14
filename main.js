@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, Tray, screen, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Notification, Tray, screen, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -150,6 +150,12 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
+  // Windows will not show a toast unless the process claims an AppUserModelID
+  // that matches a Start Menu shortcut. The installer creates one from
+  // build.appId in package.json, so this has to be the same string - without it
+  // reminders are silently dropped, and always are when running from source.
+  if (process.platform === 'win32') app.setAppUserModelId('com.tudo.app');
+
   createWindow();
   createTray();
 
@@ -160,6 +166,76 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+/*
+ * Reminders.
+ *
+ * The renderer owns the tasks, but a hidden window is this app's normal state
+ * and Chromium throttles a hidden window's timers, so the renderer only hands
+ * over the pending reminders and the main process does the waiting and the
+ * notifying. Anything whose time passed while the app was shut fires on the
+ * next launch instead.
+ */
+
+// setTimeout's ceiling; anything further out is picked up on a later launch.
+const MAX_TIMEOUT = 2 ** 31 - 1;
+let reminderTimers = [];
+// Keyed by id *and* time, so moving a reminder arms it again but a re-send of
+// the same one does not fire it twice.
+const firedReminders = new Set();
+const reminderKey = (reminder) => `${reminder.id}@${reminder.at}`;
+
+function showReminder(reminder) {
+  firedReminders.add(reminderKey(reminder));
+
+  if (Notification.isSupported()) {
+    const iconPath = path.join(__dirname, 'assets', 'icon.png');
+    const notification = new Notification({
+      title: reminder.title,
+      body: reminder.body || 'Reminder',
+      ...(fs.existsSync(iconPath) ? { icon: iconPath } : {}),
+    });
+    notification.on('click', () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.show();
+      mainWindow.focus();
+    });
+    notification.show();
+  }
+
+  // Lets the board record that this one has gone off, so a relaunch is quiet.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('reminder:fired', reminder.id);
+  }
+}
+
+function scheduleReminders(reminders) {
+  for (const timer of reminderTimers) clearTimeout(timer);
+  reminderTimers = [];
+
+  const now = Date.now();
+  const missed = [];
+
+  for (const reminder of reminders) {
+    if (!reminder || typeof reminder.id !== 'string' || firedReminders.has(reminderKey(reminder))) continue;
+
+    const at = Date.parse(reminder.at);
+    if (Number.isNaN(at)) continue;
+
+    const delay = at - now;
+    if (delay <= 0) missed.push(reminder);
+    else if (delay <= MAX_TIMEOUT) reminderTimers.push(setTimeout(() => showReminder(reminder), delay));
+  }
+
+  // After the loop, because each of these sends the renderer a message that
+  // comes straight back as another reminders:set.
+  for (const reminder of missed) showReminder(reminder);
+}
+
+ipcMain.on('reminders:set', (_event, reminders) => {
+  if (!Array.isArray(reminders)) return;
+  scheduleReminders(reminders);
 });
 
 ipcMain.handle('tasks:load', () => {

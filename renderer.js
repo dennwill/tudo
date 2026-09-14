@@ -6,6 +6,24 @@ const COLUMNS = [
 ];
 const STATUSES = COLUMNS.map((c) => c.id);
 const IMPORTANCE_LEVELS = ['Not Set', 'Low', 'Medium', 'High'];
+// Reminders hang off the due date rather than sitting at a fixed time, so the
+// whole set moves whenever the deadline moves.
+const REMIND_PRESETS = [
+  { minutes: 0, label: 'At the due time' },
+  { minutes: 5, label: '5 minutes before' },
+  { minutes: 15, label: '15 minutes before' },
+  { minutes: 30, label: '30 minutes before' },
+  { minutes: 60, label: '1 hour before' },
+  { minutes: 120, label: '2 hours before' },
+  { minutes: 1440, label: '1 day before' },
+];
+const REMIND_CUSTOM = 'custom';
+// A month out is already further ahead than the presets go; past that the
+// custom fields are almost certainly a typo.
+const REMIND_MAX_MINUTES = 60 * 24 * 30;
+
+// Mirrors the maxlength on the "Add issue" fields in index.html.
+const TITLE_MAX_LENGTH = 200;
 const HANDLE_ICON = `<svg viewBox="0 0 20 20" fill="currentColor">
   <circle cx="7" cy="4" r="1.3"></circle>
   <circle cx="13" cy="4" r="1.3"></circle>
@@ -34,11 +52,95 @@ let editingId = null;
 // Edits are held here until Save; Cancel (or opening another card) drops them.
 let editDraft = null;
 
+// The title turns into this field for as long as the card is being edited. Its
+// value lives in the draft alongside the other fields, so Cancel drops a retitle
+// exactly the way it drops a changed due date.
+function renderTitleInput(task) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'card-title-input';
+  input.maxLength = TITLE_MAX_LENGTH;
+  input.value = editDraft.text;
+  input.addEventListener('click', (e) => e.stopPropagation());
+  input.addEventListener('input', () => {
+    editDraft.text = input.value;
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEditor(task);
+    } else if (e.key === 'Escape') {
+      // Cancels the edit; stopped here so no ancestor handler acts on it too.
+      e.preventDefault();
+      e.stopPropagation();
+      closeEditor();
+      render();
+    }
+  });
+  return input;
+}
+
+// Rendering replaces the card, so the field can only be focused once it is back
+// in the document. The caret goes to the end rather than selecting the whole
+// title, so the first keystroke cannot wipe it by accident.
+function focusTitleInput(id) {
+  const input = focusEditorField(id, '.card-title-input');
+  if (input) input.setSelectionRange(input.value.length, input.value.length);
+}
+
+function focusEditorField(id, selector) {
+  const input = document.querySelector(`.card[data-id="${id}"] ${selector}`);
+  if (input) input.focus();
+  return input;
+}
+
+// Shared by the Save button and by Enter in the title field.
+function saveEditor(task) {
+  const text = editDraft.text.trim();
+  if (!text) {
+    // A card with no title has nothing to identify it by, so the editor stays
+    // open rather than silently keeping the old one.
+    showToast('A task needs a title');
+    focusTitleInput(task.id);
+    return;
+  }
+
+  // A reminder needs a deadline to count back from; the toggle is disabled
+  // without one, so this only catches a date cleared after ticking the box.
+  const remind = editDraft.remind && !!editDraft.due;
+
+  // A reminder that has moved - including because its due date moved - is a new
+  // one, so it is allowed to fire again.
+  if (
+    task.remind !== remind ||
+    task.remindOffset !== editDraft.remindOffset ||
+    task.due !== editDraft.due
+  ) {
+    task.reminderFired = false;
+  }
+
+  task.text = text;
+  task.due = editDraft.due;
+  task.importance = editDraft.importance;
+  task.showCountdown = editDraft.showCountdown;
+  task.remind = remind;
+  task.remindOffset = editDraft.remindOffset;
+  task.additionalDescription = editDraft.additionalDescription;
+  closeEditor();
+  persistAndRender();
+}
+
 function openEditor(task) {
   editingId = task.id;
   editDraft = {
+    text: task.text,
     due: task.due || null,
     importance: task.importance || 'Not Set',
+    showCountdown: task.showCountdown !== false,
+    remind: task.remind === true,
+    remindOffset: clampRemindOffset(task.remindOffset),
+    // Keeps "Custom..." selected for a value that happens to match a preset.
+    remindCustom: !isRemindPreset(clampRemindOffset(task.remindOffset)),
     additionalDescription: task.additionalDescription || '',
   };
 }
@@ -51,10 +153,13 @@ function closeEditor() {
 function toggleEditor(task) {
   if (editingId === task.id) {
     closeEditor();
-  } else {
-    openEditor(task);
+    render();
+    return;
   }
+
+  openEditor(task);
   render();
+  focusTitleInput(task.id);
 }
 
 const SKIP_DELETE_CONFIRM_KEY = 'tudo-skip-delete-confirm';
@@ -236,6 +341,12 @@ async function init() {
     for (const task of state[status]) {
       if (!task.importance) task.importance = 'Not Set';
       if (!task.additionalDescription) task.additionalDescription = '';
+      // Anything saved before this field existed keeps showing its countdown.
+      if (task.showCountdown === undefined) task.showCountdown = true;
+      // A reminder counts back from the due date, so without one there is none.
+      task.remindOffset = clampRemindOffset(task.remindOffset);
+      task.remind = task.remind === true && !!task.due;
+      task.reminderFired = task.reminderFired === true;
     }
   }
 
@@ -250,6 +361,8 @@ async function init() {
   document.getElementById('btn-close').addEventListener('click', () => window.tudo.close());
 
   setupUpdateCheck();
+  window.tudo.onReminderFired(markReminderFired);
+  syncReminders();
   setInterval(updateCountdowns, 1000);
 }
 
@@ -265,8 +378,11 @@ function render() {
 }
 
 function renderTask(task, status) {
+  const editing = editingId === task.id;
+
   const li = document.createElement('li');
-  li.className = 'card' + (status === 'done' ? ' completed' : '');
+  li.className =
+    'card' + (status === 'done' ? ' completed' : '') + (editing ? ' editing' : '');
   li.draggable = false;
   li.dataset.id = task.id;
 
@@ -305,17 +421,18 @@ function renderTask(task, status) {
 
   li.appendChild(actions);
 
-  const title = document.createElement('div');
-  title.className = 'card-title';
-  title.textContent = task.text;
-  title.addEventListener('click', () => {
-    toggleEditor(task);
-  });
-  li.appendChild(title);
-
-  if (editingId === task.id) {
+  if (editing) {
+    li.appendChild(renderTitleInput(task));
     li.appendChild(renderEditRow(task));
   } else {
+    const title = document.createElement('div');
+    title.className = 'card-title';
+    title.textContent = task.text;
+    title.addEventListener('click', () => {
+      toggleEditor(task);
+    });
+    li.appendChild(title);
+
     const dueText = formatDue(task.due);
     if (dueText) {
       const dueRow = document.createElement('div');
@@ -326,14 +443,25 @@ function renderTask(task, status) {
       due.textContent = dueText;
       dueRow.appendChild(due);
 
-      const countdown = document.createElement('div');
-      countdown.className = 'card-countdown';
-      countdown.dataset.due = task.due;
-      countdown.textContent = formatCountdown(task.due);
-      if (countdown.textContent.startsWith('Overdue')) countdown.classList.add('overdue');
-      dueRow.appendChild(countdown);
+      if (task.showCountdown !== false) {
+        const countdown = document.createElement('div');
+        countdown.className = 'card-countdown';
+        countdown.dataset.due = task.due;
+        countdown.textContent = formatCountdown(task.due);
+        if (countdown.textContent.startsWith('Overdue')) countdown.classList.add('overdue');
+        dueRow.appendChild(countdown);
+      }
 
       li.appendChild(dueRow);
+    }
+
+    // Without this the reminder is invisible until the card is opened again.
+    if (task.remind && task.due) {
+      const reminder = document.createElement('div');
+      reminder.className = 'card-reminder';
+      reminder.textContent = `Reminder ${formatOffset(task.remindOffset)}`;
+      if (task.reminderFired) reminder.classList.add('fired');
+      li.appendChild(reminder);
     }
 
     if (hasContent(task.additionalDescription)) {
@@ -396,6 +524,9 @@ function renderEditRow(task) {
   dueInput.value = draft.due || '';
   dueInput.addEventListener('change', () => {
     draft.due = dueInput.value || null;
+    syncCountdownToggle();
+    // The reminder is measured back from this date, so it follows it.
+    syncRemindRow();
   });
 
   const importanceSelect = document.createElement('select');
@@ -413,6 +544,124 @@ function renderEditRow(task) {
 
   topRow.appendChild(dueInput);
   topRow.appendChild(importanceSelect);
+
+  // Sits under the date because that is what it qualifies: with it off the card
+  // shows the due date on its own, without the live countdown beside it.
+  const countdownToggle = document.createElement('label');
+  countdownToggle.className = 'editor-toggle';
+
+  const countdownBox = document.createElement('input');
+  countdownBox.type = 'checkbox';
+  countdownBox.checked = draft.showCountdown;
+  countdownBox.addEventListener('change', () => {
+    draft.showCountdown = countdownBox.checked;
+  });
+
+  countdownToggle.appendChild(countdownBox);
+  countdownToggle.appendChild(document.createTextNode('Show countdown'));
+
+  // There is nothing to count down to until a due date is set, so the toggle
+  // greys out while the date field is empty and comes back once one is picked.
+  const syncCountdownToggle = () => {
+    const hasDue = !!draft.due;
+    countdownBox.disabled = !hasDue;
+    countdownToggle.classList.toggle('is-disabled', !hasDue);
+    countdownToggle.title = hasDue ? '' : 'Set a due date to show a countdown';
+  };
+
+  syncCountdownToggle();
+
+  // Ticking the box reveals how far ahead of the due date to fire. There is
+  // nothing to count back from without a due date, so both controls follow the
+  // date field the way the countdown toggle does.
+  const remindToggle = document.createElement('label');
+  remindToggle.className = 'editor-toggle';
+
+  const remindBox = document.createElement('input');
+  remindBox.type = 'checkbox';
+  remindBox.checked = draft.remind;
+
+  const remindSelect = document.createElement('select');
+  remindSelect.className = 'importance-select remind-select';
+  remindSelect.setAttribute('aria-label', 'When to remind me');
+  for (const preset of REMIND_PRESETS) {
+    const option = document.createElement('option');
+    option.value = String(preset.minutes);
+    option.textContent = preset.label;
+    remindSelect.appendChild(option);
+  }
+  const customOption = document.createElement('option');
+  customOption.value = REMIND_CUSTOM;
+  customOption.textContent = 'Custom...';
+  remindSelect.appendChild(customOption);
+  remindSelect.value = draft.remindCustom ? REMIND_CUSTOM : String(draft.remindOffset);
+
+  // Shown only for "Custom...": hours and minutes counted back from the due date.
+  const customRow = document.createElement('div');
+  customRow.className = 'remind-custom';
+
+  const makeCustomField = (label, max, ariaLabel) => {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'remind-number';
+    input.min = '0';
+    input.max = String(max);
+    input.setAttribute('aria-label', ariaLabel);
+    const unit = document.createElement('span');
+    unit.className = 'remind-unit';
+    unit.textContent = label;
+    customRow.appendChild(input);
+    customRow.appendChild(unit);
+    return input;
+  };
+
+  const hoursInput = makeCustomField('h', Math.floor(REMIND_MAX_MINUTES / 60), 'Hours before the due time');
+  const minutesInput = makeCustomField('m before', 59, 'Minutes before the due time');
+  hoursInput.value = String(Math.floor(draft.remindOffset / 60));
+  minutesInput.value = String(draft.remindOffset % 60);
+
+  const readCustomFields = () => {
+    const hours = Number(hoursInput.value) || 0;
+    const mins = Number(minutesInput.value) || 0;
+    draft.remindOffset = clampRemindOffset(hours * 60 + mins);
+  };
+
+  hoursInput.addEventListener('input', readCustomFields);
+  minutesInput.addEventListener('input', readCustomFields);
+
+  remindSelect.addEventListener('change', () => {
+    if (remindSelect.value === REMIND_CUSTOM) {
+      draft.remindCustom = true;
+    } else {
+      draft.remindCustom = false;
+      draft.remindOffset = clampRemindOffset(Number(remindSelect.value));
+      hoursInput.value = String(Math.floor(draft.remindOffset / 60));
+      minutesInput.value = String(draft.remindOffset % 60);
+    }
+    syncRemindRow();
+    if (draft.remindCustom) hoursInput.focus();
+  });
+
+  const syncRemindRow = () => {
+    const hasDue = !!draft.due;
+    remindBox.disabled = !hasDue;
+    remindToggle.classList.toggle('is-disabled', !hasDue);
+    remindToggle.title = hasDue ? '' : 'Set a due date to add a reminder';
+
+    remindSelect.hidden = !hasDue || !draft.remind;
+    customRow.hidden = remindSelect.hidden || !draft.remindCustom;
+  };
+
+  remindBox.addEventListener('change', () => {
+    draft.remind = remindBox.checked;
+    syncRemindRow();
+    if (!draft.remind) return;
+    remindSelect.focus();
+  });
+
+  remindToggle.appendChild(remindBox);
+  remindToggle.appendChild(document.createTextNode('Remind me'));
+
 
   const descEditor = document.createElement('div');
   descEditor.className = 'desc-editor';
@@ -552,18 +801,18 @@ function renderEditRow(task) {
   saveBtn.className = 'card-edit-btn card-edit-save';
   saveBtn.textContent = 'Save';
   saveBtn.addEventListener('mousedown', (e) => e.preventDefault());
-  saveBtn.addEventListener('click', () => {
-    task.due = draft.due;
-    task.importance = draft.importance;
-    task.additionalDescription = draft.additionalDescription;
-    closeEditor();
-    persistAndRender();
-  });
+  saveBtn.addEventListener('click', () => saveEditor(task));
 
   actions.appendChild(cancelBtn);
   actions.appendChild(saveBtn);
 
+  syncRemindRow();
+
   row.appendChild(topRow);
+  row.appendChild(countdownToggle);
+  row.appendChild(remindToggle);
+  row.appendChild(remindSelect);
+  row.appendChild(customRow);
   row.appendChild(descEditor);
   row.appendChild(actions);
   return row;
@@ -752,6 +1001,10 @@ function setupAddZones() {
         text,
         due: null,
         importance: 'Not Set',
+        showCountdown: true,
+        remind: false,
+        remindOffset: 0,
+        reminderFired: false,
         additionalDescription: '',
       });
       closeForm();
@@ -843,9 +1096,80 @@ function setupUpdateCheck() {
 
 async function persistAndRender() {
   render();
+  syncReminders();
   const result = await window.tudo.saveTasks(state);
   if (!result || !result.ok) {
     showToast("Couldn't save changes");
+  }
+}
+
+/* --------------------------------------------------------------- reminders */
+
+// The main process does the waiting and the notifying - see main.js. All this
+// side has to do is keep it told about what is still pending.
+function isRemindPreset(minutes) {
+  return REMIND_PRESETS.some((preset) => preset.minutes === minutes);
+}
+
+function clampRemindOffset(minutes) {
+  if (!Number.isFinite(minutes)) return 0;
+  return Math.min(Math.max(Math.round(minutes), 0), REMIND_MAX_MINUTES);
+}
+
+// "1 hour before", "1h 30m before", "at the due time".
+function formatOffset(minutes) {
+  const offset = clampRemindOffset(minutes);
+  if (offset === 0) return 'at the due time';
+
+  const preset = REMIND_PRESETS.find((p) => p.minutes === offset);
+  if (preset) return preset.label.toLowerCase();
+
+  const hours = Math.floor(offset / 60);
+  const mins = offset % 60;
+  if (!hours) return `${mins}m before`;
+  if (!mins) return `${hours}h before`;
+  return `${hours}h ${mins}m before`;
+}
+
+// The moment the notification is due. NaN whenever there is nothing to hang it
+// off, which is every case the scheduler should skip.
+function reminderTimeFor(task) {
+  if (!task.remind || !task.due) return NaN;
+  const due = Date.parse(task.due);
+  if (Number.isNaN(due)) return NaN;
+  return due - clampRemindOffset(task.remindOffset) * 60000;
+}
+
+function syncReminders() {
+  const pending = [];
+
+  for (const status of STATUSES) {
+    for (const task of state[status]) {
+      if (task.reminderFired) continue;
+
+      const at = reminderTimeFor(task);
+      if (Number.isNaN(at)) continue;
+
+      pending.push({
+        id: task.id,
+        title: task.text,
+        body: `Due ${formatDue(task.due)}`,
+        at: new Date(at).toISOString(),
+      });
+    }
+  }
+
+  window.tudo.setReminders(pending);
+}
+
+// Recorded so a reminder that has gone off stays quiet on the next launch.
+function markReminderFired(id) {
+  for (const status of STATUSES) {
+    const task = state[status].find((t) => t.id === id);
+    if (!task || task.reminderFired) continue;
+    task.reminderFired = true;
+    persistAndRender();
+    return;
   }
 }
 

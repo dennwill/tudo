@@ -8,7 +8,9 @@ A tiny always-on-top desktop widget for tracking tasks. It stays on top of your 
 - Four columns: To-do, Doing, On Hold, Done
 - Show or hide any column from the Columns dropdown, with the choice remembered between restarts
 - Drag and drop tasks between columns, and drag them up or down to reorder within a column
-- Set a due date and an importance level (Low, Medium, High) for each task
+- Click the edit button (or the card) to rename a task and set a due date and an importance level (Low, Medium, High) - Enter saves, Escape and Cancel drop the whole edit
+- Tick "Remind me" in the editor and choose how far ahead of the due date to be told - at the due time, 5/15/30 minutes, 1 or 2 hours, a day, or a custom number of hours and minutes - for a desktop notification about that task; move the due date and the reminder moves with it. The main process does the waiting, so reminders still arrive with the window hidden or in the tray, and anything whose time passed while the app was shut fires once on the next launch
+- Live countdown to the due date, which turns red once a task is overdue - the "Show countdown" toggle under the date in the editor hides it per task, leaving just the date
 - Drag a task to the trash zone to delete it, with an optional confirmation step
 - Choose from five themes: Dark Minimalist, Light Minimalist, Neo-Brutalism, Glassmorphism, and Windows 2000
 - Tray icon to show, hide, or quit the app

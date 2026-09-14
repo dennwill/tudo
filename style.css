@@ -663,6 +663,22 @@ body {
   gap: 2px;
 }
 
+/* The reminder line on a card, in the accent colour because it is a note about
+   the card rather than part of the task. */
+.card-reminder {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+/* Once it has gone off it stays on the card as a record, without the accent. */
+.card-reminder.fired {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
 .card-countdown {
   font-family: var(--font-body);
   font-size: 10.5px;
@@ -811,6 +827,30 @@ body.dragging-card #trash-zone {
   cursor: pointer;
 }
 
+/* The title field, standing in for .card-title while the card is being edited.
+   It keeps the title's type metrics so the card does not jump when the editor
+   opens, and takes the full width - which is what .card.editing frees up. */
+.card-title-input {
+  width: 100%;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  padding: 5px 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  font-family: var(--font-body);
+  color: var(--text);
+  outline: none;
+}
+
+/* The action buttons are absolutely positioned over the top-right of the card,
+   which is where the title field now goes. Cancel and Save replace them for as
+   long as the editor is open. */
+.card.editing .card-actions {
+  display: none;
+}
+
 .card-edit-row {
   display: flex;
   flex-direction: column;
@@ -820,6 +860,65 @@ body.dragging-card #trash-zone {
 .card-edit-top {
   display: flex;
   gap: 6px;
+}
+
+/* The checkbox rows in the card editor - "Show countdown" and "Remind me".
+   Both sit under the due date, because both qualify it. */
+.editor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* The "Custom..." row: two number fields counting back from the due date. */
+.remind-custom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.remind-custom[hidden],
+.remind-select[hidden] {
+  display: none;
+}
+
+.remind-number {
+  width: 52px;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  color: var(--text);
+  outline: none;
+}
+
+.remind-unit {
+  font-size: 11px;
+  font-family: var(--font-body);
+  color: var(--text-muted);
+}
+
+.editor-toggle input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Set from JS rather than with :has(), which needs a newer Firefox than the
+   rest of the app does. */
+.editor-toggle.is-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.editor-toggle.is-disabled input {
+  cursor: default;
 }
 
 .due-input,

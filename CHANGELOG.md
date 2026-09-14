@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 - 2026-09-14
+
+- Added reminders: tick "Remind me" in the editor and pick how far ahead of the due date to be notified - at the due time, 5, 15 or 30 minutes, 1 or 2 hours, a day, or a custom number of hours and minutes
+- Reminders follow the due date when it moves, still arrive while the window is hidden or in the tray, and any missed while the app was closed fire on the next launch
+- Tasks can now be renamed from the editor; Enter saves, Escape cancels
+- Added a "Show countdown" toggle to hide the live countdown on a task and show just its due date
+
 ## 1.2.1 - 2026-08-26
 
 - Fixed dragging cards between columns and reordering within a column, which silently did nothing
