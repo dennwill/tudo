@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 - 2026-09-18
+
+- Added a calendar view: a month grid with each task on its due date, and an Upcoming panel reading from the most overdue task down through today and the days after - clicking a task in either panel goes back to the board with its editor open
+- Cards can now be folded down to their title, with the due date and countdown left on show; the state is saved with the task
+- The titlebar is now the app icon, a view button, and one settings menu - the theme picker and the Columns dropdown moved inside it, alongside a new Font list
+- Added a font setting with five faces: Plus Jakarta Sans, Poppins, Inter, Roboto, and Montserrat - it is a setting of its own rather than part of a theme, so it stays put as you switch themes
+- Fixed the overdue red and the reminder and link text in the Glassmorphism theme, which were too dark to read against its gradient
+
 ## 1.3.0 - 2026-09-14
 
 - Added reminders: tick "Remind me" in the editor and pick how far ahead of the due date to be notified - at the due time, 5, 15 or 30 minutes, 1 or 2 hours, a day, or a custom number of hours and minutes

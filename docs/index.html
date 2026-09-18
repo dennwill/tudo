@@ -280,6 +280,7 @@
   [data-demo-theme="glassmorphism"] .demo-badge-medium { color: #fbbf24; background: rgba(251, 191, 36, 0.14); }
   [data-demo-theme="dark-minimalist"] .demo-badge-low,
   [data-demo-theme="glassmorphism"] .demo-badge-low { color: #34d399; background: rgba(52, 211, 153, 0.14); }
+  [data-demo-theme="glassmorphism"] .demo-badge-high { color: #ffb4ab; background: rgba(248, 113, 113, 0.14); }
 
   /* Real token values, lifted from the app's own style.css */
   .demo-stage[data-demo-theme="dark-minimalist"] {
@@ -496,7 +497,7 @@
     <div class="metabar-brand">
       <img class="metabar-icon" src="data:image/png;base64,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" alt="" />
       <span class="metabar-name">tudo</span>
-      <span class="metabar-version">v1.3.0</span>
+      <span class="metabar-version">v1.4.0</span>
     </div>
     <nav class="metabar-links">
       <a href="#themes">Themes</a>
@@ -599,7 +600,7 @@
     <section id="themes">
       <div class="section-head">
         <h2>Five looks, one board.</h2>
-        <p>Switch anytime from the titlebar dropdown. Your pick is remembered between restarts.</p>
+        <p>Switch anytime from the settings menu in the titlebar, and set the font while you are there. Both are remembered between restarts.</p>
       </div>
       <div class="look-grid">
         <div class="look-card" data-look="dark-minimalist">
@@ -642,7 +643,7 @@
         </div>
         <div class="feature">
           <h3>To-do, Doing, On Hold, Done</h3>
-          <p>Hide any column you don't need from the Columns menu — your choice is remembered.</p>
+          <p>Hide any column you don't need from the settings menu — your choice is remembered.</p>
         </div>
         <div class="feature">
           <h3>Move cards, reorder columns</h3>
@@ -660,6 +661,18 @@
           <h3>Never falls behind</h3>
           <p>Checks for new releases on launch and installs them in place — no manual reinstall.</p>
         </div>
+        <div class="feature">
+          <h3>Every deadline on a calendar</h3>
+          <p>Flip the board to a month grid, with an Upcoming panel counting from the most overdue task.</p>
+        </div>
+        <div class="feature">
+          <h3>Fold what you're not on</h3>
+          <p>Collapse any card to its title. The due date and countdown stay on show.</p>
+        </div>
+        <div class="feature">
+          <h3>Pick your typeface</h3>
+          <p>Five fonts, from Plus Jakarta Sans to Montserrat, set apart from the theme so it survives a reskin.</p>
+        </div>
       </div>
     </section>
 
@@ -668,6 +681,19 @@
         <h2>What's new.</h2>
       </div>
       <div class="changelog">
+        <div class="release">
+          <div class="release-meta">
+            <span class="release-version">v1.4.0</span>
+            <span class="release-date">2026-09-18</span>
+          </div>
+          <ul class="release-notes">
+            <li>Added a calendar view with a month grid and an Upcoming panel, so every due date lines up in one place</li>
+            <li>Cards can now be folded down to their title, with the due date and countdown left on show</li>
+            <li>The titlebar is now one settings menu, holding the theme, the columns, and a new font list</li>
+            <li>Added a font setting with five faces, kept separate from the theme so it stays put as you switch looks</li>
+            <li>Fixed overdue, reminder, and link text being hard to read in the Glassmorphism theme</li>
+          </ul>
+        </div>
         <div class="release">
           <div class="release-meta">
             <span class="release-version">v1.3.0</span>

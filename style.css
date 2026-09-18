@@ -10,7 +10,9 @@
   --accent: #5e6ad2;
   --accent-glow: rgba(94, 106, 210, 0.15);
 
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Overwritten from the Font list in Settings; this is only what shows before
+     the webfont has loaded. */
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --heading-transform: none;
   --heading-tracking: -0.01em;
@@ -42,6 +44,15 @@
   --color-scheme: dark;
   --titlebar-bg: transparent;
   --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+
+  /* Overdue red, split in two: the hex is the text and the triplet is the
+     tint behind it, so a theme can lift the text without washing out the tint.
+     --accent-text is the accent where it has to be *read* - the reminder line
+     and description links - rather than used as a border or a fill. */
+  --danger: #f87171;
+  --danger-rgb: 248, 113, 113;
+  --accent-text: var(--accent);
+  --colored-text-shadow: none;
 }
 
 /* ---------- Light Minimalist ---------- */
@@ -162,6 +173,15 @@ html[data-theme="glassmorphism"] {
   --color-scheme: dark;
   --titlebar-bg: rgba(255, 255, 255, 0.06);
   --scrollbar-thumb: rgba(255, 255, 255, 0.28);
+
+  /* Cards here are barely-tinted glass over a gradient running pink to blue, so
+     a small coloured label has no one background to be legible against. Both
+     colours are lifted to roughly the luminance of the white body text - they
+     still read as red and as the accent, by hue rather than by being darker -
+     and the shadow below grounds them wherever the gradient is pale. */
+  --danger: #ffb4ab;
+  --accent-text: #d8cfff;
+  --colored-text-shadow: 0 1px 2px rgba(12, 10, 36, 0.55);
 }
 
 /* ---------- Windows 2000 ---------- */
@@ -176,7 +196,6 @@ html[data-theme="windows-2000"] {
   --accent: #316ac5;
   --accent-glow: rgba(49, 106, 197, 0.25);
 
-  --font-body: 'Tahoma', 'MS Sans Serif', Geneva, Verdana, sans-serif;
   --font-mono: 'Courier New', monospace;
   --heading-transform: none;
   --heading-tracking: normal;
@@ -325,55 +344,98 @@ body {
   gap: 6px;
 }
 
-.columns-menu {
+/* Both wrapped, so the fixed-width rule for the minimise and close buttons
+   beside them doesn't apply, and so the panel can hang off one of them. */
+.view-switch,
+.settings-menu {
   position: relative;
   -webkit-app-region: no-drag;
   display: flex;
 }
 
-.columns-btn {
+.icon-btn {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
   height: 20px;
   border: var(--border-w) solid var(--border);
   background: var(--btn-bg);
   box-shadow: var(--btn-bevel);
   color: var(--text-muted);
-  font-size: 10.5px;
-  font-family: var(--font-body);
-  text-transform: var(--heading-transform);
-  letter-spacing: var(--heading-tracking);
   border-radius: var(--radius-xs);
-  padding: 0 7px;
+  padding: 0;
   cursor: pointer;
   outline: none;
 }
 
-.columns-btn:hover {
+.icon-btn svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.icon-btn:hover,
+.icon-btn[aria-expanded="true"] {
   border-color: rgba(255, 255, 255, 0.25);
   color: var(--text);
   background: var(--btn-bg-hover);
 }
 
-.columns-panel {
+.settings-panel {
   position: absolute;
-  top: 24px;
+  top: 26px;
   right: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 5px;
-  min-width: 116px;
+  padding: 6px;
+  min-width: 152px;
+  /* Taller than the window once every section is open, so it scrolls rather
+     than running off the bottom. */
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
   background: var(--modal-bg);
   border: var(--border-w) solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--modal-shadow);
 }
 
-.columns-panel[hidden] {
+.settings-panel[hidden] {
   display: none;
 }
 
-.columns-option {
+.settings-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-panel::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.settings-group[hidden] {
+  display: none;
+}
+
+.settings-group + .settings-group {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: var(--border-w) solid var(--border);
+}
+
+.settings-heading {
+  font-size: 9.5px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  padding: 0 5px 3px;
+}
+
+.settings-option {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -385,50 +447,19 @@ body {
   cursor: pointer;
 }
 
-.columns-option:hover {
+.settings-option:hover {
   background: var(--btn-bg-hover);
 }
 
-.columns-option input {
+.settings-option input {
   accent-color: var(--accent);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.columns-option input:disabled {
+.settings-option input:disabled {
   cursor: default;
   opacity: 0.6;
-}
-
-.theme-select {
-  -webkit-app-region: no-drag;
-  height: 20px;
-  border: var(--border-w) solid var(--border);
-  background: var(--btn-bg);
-  box-shadow: var(--btn-bevel);
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-family: var(--font-body);
-  border-radius: var(--radius-xs);
-  padding: 0 4px;
-  cursor: pointer;
-  outline: none;
-}
-
-.theme-select:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  color: var(--text);
-  background: var(--btn-bg-hover);
-}
-
-.theme-select option {
-  background-color: var(--modal-bg);
-  color: var(--text);
-}
-
-.theme-select option:checked,
-.theme-select option:hover {
-  background-color: var(--accent);
-  color: #fff;
 }
 
 #window-controls > button {
@@ -452,9 +483,9 @@ body {
 }
 
 #btn-close:hover {
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.3);
-  color: #f87171;
+  background: rgba(var(--danger-rgb), 0.12);
+  border-color: rgba(var(--danger-rgb), 0.3);
+  color: var(--danger);
 }
 
 .board {
@@ -465,6 +496,353 @@ body {
   padding: 10px;
   overflow: hidden;
   min-height: 0;
+}
+
+.board[hidden] {
+  display: none;
+}
+
+/* ---------- Calendar view ---------- */
+
+/* Two panels: the month grid to browse, the Upcoming list to read straight
+   down. Both draw from the same tasks. */
+.calendar {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.calendar[hidden] {
+  display: none;
+}
+
+.cal-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.upcoming {
+  flex: 0 0 196px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: var(--surface-blur);
+}
+
+.upcoming-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 2px 8px;
+  border-bottom: var(--border-w) solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.upcoming-title {
+  color: var(--text);
+  text-transform: var(--heading-transform);
+  letter-spacing: var(--heading-tracking);
+}
+
+.upcoming-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.upcoming-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.upcoming-list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.up-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.up-group-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.up-group.overdue .up-group-label {
+  color: var(--danger);
+}
+
+.up-task {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 5px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--card-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.up-task:hover {
+  background: var(--card-hover);
+  border-color: var(--border-focus);
+}
+
+.up-task.overdue {
+  border-color: rgba(var(--danger-rgb), 0.45);
+}
+
+.up-task .icon-dot {
+  width: 5px;
+  height: 5px;
+  box-shadow: none;
+}
+
+.up-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.up-time {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.up-task.overdue .up-time {
+  color: var(--danger);
+}
+
+.upcoming-empty {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.cal-month {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: var(--heading-transform);
+  letter-spacing: var(--heading-tracking);
+}
+
+.cal-nav,
+.cal-today {
+  height: 20px;
+  border: var(--border-w) solid var(--border);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-bevel);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-family: var(--font-body);
+  text-transform: var(--heading-transform);
+  letter-spacing: var(--heading-tracking);
+  border-radius: var(--radius-xs);
+  padding: 0 7px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.cal-nav {
+  width: 20px;
+  padding: 0;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.cal-nav:hover,
+.cal-today:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--text);
+  background: var(--btn-bg-hover);
+}
+
+.cal-weekdays,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-weekdays {
+  flex-shrink: 0;
+}
+
+.cal-weekday {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The rows grow with the busiest day in them and the month scrolls, so a full
+   day is never cut off behind a "+2 more". */
+.cal-grid {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* The weeks share out the height on a quiet month and grow past it on a busy
+     one, when the grid scrolls. */
+  grid-auto-rows: minmax(46px, auto);
+  min-height: 0;
+}
+
+.cal-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cal-grid::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px;
+  min-width: 0;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-xs);
+  backdrop-filter: var(--surface-blur);
+}
+
+/* Days either side of the month stay in place, dimmed, so the weeks read
+   straight across without gaps. */
+.cal-day.other-month {
+  opacity: 0.4;
+}
+
+.cal-day.today {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.cal-date {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.cal-day.today .cal-date {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.cal-task {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 1px 3px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--card-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 9.5px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cal-task:hover {
+  background: var(--card-hover);
+  border-color: var(--border-focus);
+}
+
+.cal-task .icon-dot {
+  width: 5px;
+  height: 5px;
+  box-shadow: none;
+}
+
+.cal-task-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-task.done .cal-task-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.cal-task.overdue {
+  border-color: rgba(var(--danger-rgb), 0.45);
+}
+
+.cal-task.overdue .cal-task-text {
+  color: var(--danger);
+}
+
+.cal-undated {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.cal-undated[hidden] {
+  display: none;
+}
+
+/* Shrink the window far enough and there is no room for both: seven day columns
+   need the width more than the list does, and the list's tasks are all on the
+   grid anyway. */
+@media (max-width: 660px) {
+  .upcoming {
+    display: none;
+  }
 }
 
 .col {
@@ -624,8 +1002,8 @@ body {
 }
 
 .card-action-delete:hover {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.1);
+  color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.1);
 }
 
 .card-handle {
@@ -642,7 +1020,60 @@ body {
   line-height: 1.4;
   color: var(--text);
   flex: 1;
-  padding-right: 70px;
+  min-width: 0;
+  /* Long words drop to the next line rather than being split down the middle,
+     which the card's own break-word would otherwise do. */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* The edit, delete and drag buttons sit over the top-right corner of the card,
+   so the room for them is kept clear on the title's first line only - the lines
+   under it run the full width of the card instead of down a narrow column. */
+.card-title::before {
+  content: "";
+  float: right;
+  width: 60px;
+  height: 1.4em;
+}
+
+/* The title of a card that can fold, sharing its line with the chevron. */
+.card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.card-toggle {
+  width: 14px;
+  height: 16px;
+  margin-top: 1px;
+  padding: 0;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.card-toggle:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.card-toggle svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.15s ease;
+}
+
+/* Pointing down while the card is open, and at its title once it is folded. */
+.card.collapsed .card-toggle svg {
+  transform: rotate(-90deg);
 }
 
 .card.completed .card-title {
@@ -663,13 +1094,21 @@ body {
   gap: 2px;
 }
 
+/* Folded, the date and its countdown share a line wherever the column is wide
+   enough for both, so keeping them costs one line instead of two. */
+.card.collapsed .card-due-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
 /* The reminder line on a card, in the accent colour because it is a note about
    the card rather than part of the task. */
 .card-reminder {
   font-family: var(--font-body);
   font-size: 10.5px;
   font-weight: 500;
-  color: var(--accent);
+  color: var(--accent-text);
   opacity: 0.85;
 }
 
@@ -688,13 +1127,27 @@ body {
 }
 
 .card-countdown.overdue {
-  color: #f87171;
+  color: var(--danger);
   opacity: 1;
 }
 
 .card-meta {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Every label that is coloured rather than white, gathered so the shadow is
+   declared once. None of them set a text-shadow of their own, so this only ever
+   adds the one the theme asks for. */
+.card-countdown.overdue,
+.card-reminder,
+.card-desc a,
+.desc-box a,
+.badge,
+.up-group.overdue .up-group-label,
+.up-task.overdue .up-time,
+.cal-task.overdue .cal-task-text {
+  text-shadow: var(--colored-text-shadow);
 }
 
 .badge {
@@ -711,9 +1164,9 @@ body {
 }
 
 .badge-high {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.3);
-  background: rgba(248, 113, 113, 0.1);
+  color: var(--danger);
+  border-color: rgba(var(--danger-rgb), 0.3);
+  background: rgba(var(--danger-rgb), 0.1);
 }
 
 .badge-medium {
@@ -735,14 +1188,14 @@ body {
   bottom: -60px;
   height: 46px;
   border-radius: var(--radius-md);
-  border: 1.5px dashed rgba(248, 113, 113, 0.4);
+  border: 1.5px dashed rgba(var(--danger-rgb), 0.4);
   background: rgba(20, 12, 13, 0.85);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #f87171;
+  color: var(--danger);
   font-size: 12px;
   font-weight: 600;
   opacity: 0;
@@ -763,9 +1216,9 @@ body.dragging-card #trash-zone {
 }
 
 #trash-zone.drag-over {
-  background: rgba(248, 113, 113, 0.22);
+  background: rgba(var(--danger-rgb), 0.22);
   border-style: solid;
-  border-color: rgba(248, 113, 113, 0.7);
+  border-color: rgba(var(--danger-rgb), 0.7);
   transform: scale(1.02);
 }
 
@@ -1090,7 +1543,7 @@ body.dragging-card #trash-zone {
 
 .desc-box a,
 .card-desc a {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
 }
 
@@ -1189,15 +1642,15 @@ body.dragging-card #trash-zone {
 }
 
 #confirm-actions button#confirm-delete {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.45);
-  background: rgba(248, 113, 113, 0.16);
+  color: var(--danger);
+  border-color: rgba(var(--danger-rgb), 0.45);
+  background: rgba(var(--danger-rgb), 0.16);
 }
 
 #confirm-actions button#confirm-delete:hover {
   color: #fca5a5;
-  border-color: rgba(248, 113, 113, 0.9);
-  background: rgba(248, 113, 113, 0.32);
+  border-color: rgba(var(--danger-rgb), 0.9);
+  background: rgba(var(--danger-rgb), 0.32);
 }
 
 #toast {
@@ -1205,9 +1658,9 @@ body.dragging-card #trash-zone {
   left: 50%;
   bottom: 16px;
   transform: translateX(-50%);
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  color: #f87171;
+  background: rgba(var(--danger-rgb), 0.15);
+  border: 1px solid rgba(var(--danger-rgb), 0.35);
+  color: var(--danger);
   font-size: 11.5px;
   font-weight: 500;
   padding: 7px 12px;

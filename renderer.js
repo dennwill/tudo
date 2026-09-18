@@ -5,6 +5,7 @@ const COLUMNS = [
   { id: 'done', label: 'Done' },
 ];
 const STATUSES = COLUMNS.map((c) => c.id);
+const COLUMN_LABELS = Object.fromEntries(COLUMNS.map((c) => [c.id, c.label]));
 const IMPORTANCE_LEVELS = ['Not Set', 'Low', 'Medium', 'High'];
 // Reminders hang off the due date rather than sitting at a fixed time, so the
 // whole set moves whenever the deadline moves.
@@ -45,6 +46,20 @@ const TRASH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
   <path d="M10 11v6"></path>
   <path d="M14 11v6"></path>
   <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+</svg>`;
+const CHEVRON_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <polyline points="6 9 12 15 18 9"></polyline>
+</svg>`;
+const BOARD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3" y="4" width="5" height="16" rx="1"></rect>
+  <rect x="10" y="4" width="5" height="11" rx="1"></rect>
+  <rect x="17" y="4" width="4" height="7" rx="1"></rect>
+</svg>`;
+const CALENDAR_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+  <path d="M3 10h18"></path>
+  <path d="M8 3v4"></path>
+  <path d="M16 3v4"></path>
 </svg>`;
 
 let state = { todo: [], doing: [], onhold: [], done: [] };
@@ -178,19 +193,88 @@ function applyTheme(id) {
   localStorage.setItem(THEME_KEY, id);
 }
 
-function setupThemeSelector() {
-  const select = document.getElementById('theme-select');
-  for (const theme of THEMES) {
-    const opt = document.createElement('option');
-    opt.value = theme.id;
-    opt.textContent = theme.label;
-    select.appendChild(opt);
-  }
-  select.value = document.documentElement.dataset.theme;
-  select.addEventListener('change', () => applyTheme(select.value));
+applyTheme(localStorage.getItem(THEME_KEY) || THEMES[0].id);
+
+// Every row in the settings panel is the same shape: a tickbox or a radio with
+// its label beside it.
+function settingsOption({ type, name, value, label, checked, onChange }) {
+  const row = document.createElement('label');
+  row.className = 'settings-option';
+
+  const input = document.createElement('input');
+  input.type = type;
+  if (name) input.name = name;
+  input.value = value;
+  input.checked = checked;
+  input.addEventListener('change', () => onChange(input));
+
+  row.appendChild(input);
+  row.appendChild(document.createTextNode(label));
+  return { row, input };
 }
 
-applyTheme(localStorage.getItem(THEME_KEY) || THEMES[0].id);
+function setupThemeOptions() {
+  const container = document.getElementById('theme-options');
+  const current = document.documentElement.dataset.theme;
+
+  for (const theme of THEMES) {
+    const { row } = settingsOption({
+      type: 'radio',
+      name: 'theme',
+      value: theme.id,
+      label: theme.label,
+      checked: theme.id === current,
+      onChange: (input) => applyTheme(input.value),
+    });
+    container.appendChild(row);
+  }
+}
+
+// The body font is the reader's choice rather than part of a theme, so it is
+// kept here and applied over whatever the theme asks for. The monospace face
+// stays with the theme.
+const FONTS = [
+  { id: 'plus-jakarta-sans', label: 'Plus Jakarta Sans', stack: "'Plus Jakarta Sans'" },
+  { id: 'poppins', label: 'Poppins', stack: "'Poppins'" },
+  { id: 'inter', label: 'Inter', stack: "'Inter'" },
+  { id: 'roboto', label: 'Roboto', stack: "'Roboto'" },
+  { id: 'montserrat', label: 'Montserrat', stack: "'Montserrat'" },
+];
+const FONT_KEY = 'tudo-font';
+// Kept in step with the --font-body fallback in style.css, for the moment
+// before the webfont has arrived.
+const FONT_FALLBACK = 'system-ui, -apple-system, sans-serif';
+
+function fontStack(font) {
+  return `${font.stack}, ${FONT_FALLBACK}`;
+}
+
+function applyFont(id) {
+  const font = FONTS.find((f) => f.id === id) || FONTS[0];
+  document.documentElement.style.setProperty('--font-body', fontStack(font));
+  localStorage.setItem(FONT_KEY, font.id);
+  return font.id;
+}
+
+const currentFont = applyFont(localStorage.getItem(FONT_KEY));
+
+function setupFontOptions() {
+  const container = document.getElementById('font-options');
+
+  for (const font of FONTS) {
+    const { row } = settingsOption({
+      type: 'radio',
+      name: 'font',
+      value: font.id,
+      label: font.label,
+      checked: font.id === currentFont,
+      onChange: (input) => applyFont(input.value),
+    });
+    // Each name is set in the face it names, so the list is its own preview.
+    row.style.fontFamily = fontStack(font);
+    container.appendChild(row);
+  }
+}
 
 const VISIBLE_COLUMNS_KEY = 'tudo-visible-columns';
 
@@ -207,6 +291,9 @@ function loadVisibleColumns() {
 }
 
 let visibleColumns = loadVisibleColumns();
+// Assigned when the Columns menu is built. The calendar calls it after bringing
+// a hidden column back, so the menu's tickboxes keep up.
+let syncColumnsPanel = () => {};
 
 function applyColumnVisibility() {
   const board = document.querySelector('.board');
@@ -218,42 +305,46 @@ function applyColumnVisibility() {
   localStorage.setItem(VISIBLE_COLUMNS_KEY, JSON.stringify(visibleColumns));
 }
 
-function setupColumnsMenu() {
-  const btn = document.getElementById('columns-btn');
-  const panel = document.getElementById('columns-panel');
+function setupColumnsOptions() {
+  const container = document.getElementById('columns-options');
 
   for (const column of COLUMNS) {
-    const label = document.createElement('label');
-    label.className = 'columns-option';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = column.id;
-    checkbox.checked = visibleColumns.includes(column.id);
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        visibleColumns = STATUSES.filter(
-          (id) => id === column.id || visibleColumns.includes(id)
-        );
-      } else {
-        visibleColumns = visibleColumns.filter((id) => id !== column.id);
-      }
-      applyColumnVisibility();
-      syncCheckboxes();
+    const { row } = settingsOption({
+      type: 'checkbox',
+      value: column.id,
+      label: column.label,
+      checked: visibleColumns.includes(column.id),
+      onChange: (checkbox) => {
+        if (checkbox.checked) {
+          visibleColumns = STATUSES.filter(
+            (id) => id === column.id || visibleColumns.includes(id)
+          );
+        } else {
+          visibleColumns = visibleColumns.filter((id) => id !== column.id);
+        }
+        applyColumnVisibility();
+        syncColumnsPanel();
+      },
     });
-
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(column.label));
-    panel.appendChild(label);
+    container.appendChild(row);
   }
 
   // The last visible column can't be unchecked - an empty board is useless.
-  const syncCheckboxes = () => {
-    panel.querySelectorAll('input[type="checkbox"]').forEach((box) => {
+  syncColumnsPanel = () => {
+    container.querySelectorAll('input[type="checkbox"]').forEach((box) => {
       box.checked = visibleColumns.includes(box.value);
       box.disabled = box.checked && visibleColumns.length === 1;
     });
   };
+
+  syncColumnsPanel();
+  applyColumnVisibility();
+}
+
+// Theme, columns and font all live behind the one gear in the titlebar.
+function setupSettingsMenu() {
+  const btn = document.getElementById('settings-btn');
+  const panel = document.getElementById('settings-panel');
 
   const closePanel = () => {
     panel.hidden = true;
@@ -272,9 +363,345 @@ function setupColumnsMenu() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closePanel();
   });
+}
 
-  syncCheckboxes();
-  applyColumnVisibility();
+/* ---------------------------------------------------------------- calendar */
+
+// The board and the calendar are two views of the same tasks: the board is
+// where work gets moved along, the calendar is where the deadlines line up.
+const VIEW_KEY = 'tudo-view';
+
+let view = localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'board';
+let calMonth = startOfMonth(new Date());
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+// Local, not UTC: a due date is a wall-clock time, and toISOString() would
+// shunt anything near midnight onto the wrong day.
+function dateKey(date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+// 0 for Sunday, matching Date.getDay(). Intl counts from Monday as 1, and not
+// every build has the week data, so Monday is the fallback.
+function firstDayOfWeek() {
+  try {
+    const locale = new Intl.Locale(navigator.language);
+    const info = typeof locale.getWeekInfo === 'function' ? locale.getWeekInfo() : locale.weekInfo;
+    if (info && Number.isInteger(info.firstDay)) return info.firstDay % 7;
+  } catch {
+    // Fall through to Monday.
+  }
+  return 1;
+}
+
+function setupViewToggle() {
+  document.getElementById('view-btn').addEventListener('click', () => {
+    setView(view === 'board' ? 'calendar' : 'board');
+  });
+  applyView();
+}
+
+function setView(next) {
+  view = next;
+  localStorage.setItem(VIEW_KEY, view);
+  applyView();
+}
+
+// The button shows where it takes you, not where you are.
+function applyView() {
+  const onCalendar = view === 'calendar';
+  const btn = document.getElementById('view-btn');
+
+  document.querySelector('.board').hidden = onCalendar;
+  document.getElementById('calendar').hidden = !onCalendar;
+  // The Columns tickboxes have nothing to say about the calendar.
+  document.getElementById('columns-group').hidden = onCalendar;
+
+  btn.innerHTML = onCalendar ? BOARD_ICON : CALENDAR_ICON;
+  btn.title = onCalendar ? 'Back to the task board' : 'See due dates on a calendar';
+  btn.setAttribute('aria-label', btn.title);
+
+  if (onCalendar) renderCalendar();
+}
+
+function setupCalendar() {
+  document.getElementById('cal-prev').addEventListener('click', () => shiftMonth(-1));
+  document.getElementById('cal-next').addEventListener('click', () => shiftMonth(1));
+  document.getElementById('cal-today').addEventListener('click', () => {
+    calMonth = startOfMonth(new Date());
+    renderCalendar();
+  });
+}
+
+function shiftMonth(delta) {
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + delta, 1);
+  renderCalendar();
+}
+
+// Every dated task, filed under the day it falls on. The stored due value is a
+// datetime-local string, so the first ten characters are already the day.
+function tasksByDueDate() {
+  const byDate = new Map();
+
+  for (const status of STATUSES) {
+    for (const task of state[status]) {
+      if (!task.due || !formatDue(task.due)) continue;
+      const key = task.due.slice(0, 10);
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key).push({ task, status });
+    }
+  }
+
+  // Earliest first within a day, so a cell reads down the day like a schedule.
+  for (const entries of byDate.values()) {
+    entries.sort((a, b) => a.task.due.localeCompare(b.task.due));
+  }
+
+  return byDate;
+}
+
+function countUndatedTasks() {
+  let count = 0;
+  for (const status of STATUSES) {
+    count += state[status].filter((task) => !task.due || !formatDue(task.due)).length;
+  }
+  return count;
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month').textContent =
+    calMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  renderWeekdays();
+
+  const byDate = tasksByDueDate();
+  const todayKey = dateKey(new Date());
+  const offset = (calMonth.getDay() - firstDayOfWeek() + 7) % 7;
+  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
+  // Whole weeks, and only as many as the month actually reaches into.
+  const cellCount = Math.ceil((offset + daysInMonth) / 7) * 7;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < cellCount; i++) {
+    const day = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1 - offset + i);
+    grid.appendChild(renderCalendarDay(day, byDate, todayKey));
+  }
+
+  // Tasks with no deadline cannot sit on a day, so they are counted instead of
+  // being silently dropped from the only view that claims to show everything.
+  const undated = countUndatedTasks();
+  const note = document.getElementById('cal-undated');
+  note.hidden = undated === 0;
+  note.textContent =
+    undated === 1 ? '1 task has no due date' : `${undated} tasks have no due date`;
+
+  renderUpcoming();
+}
+
+/* ---------------------------------------------------------------- upcoming */
+
+// The panel beside the grid. The grid is for browsing a month; this is for the
+// one question the board cannot answer at a glance - what is next, in order,
+// whatever month it falls in. Finished tasks are left out: nothing in Done is
+// still coming.
+function upcomingTasks() {
+  const entries = [];
+
+  for (const status of STATUSES) {
+    if (status === 'done') continue;
+    for (const task of state[status]) {
+      if (!task.due || !formatDue(task.due)) continue;
+      entries.push({ task, status });
+    }
+  }
+
+  return entries.sort((a, b) => a.task.due.localeCompare(b.task.due));
+}
+
+function renderUpcoming() {
+  const list = document.getElementById('upcoming-list');
+  list.innerHTML = '';
+
+  const entries = upcomingTasks();
+  document.getElementById('upcoming-count').textContent = entries.length;
+
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'upcoming-empty';
+    empty.textContent = 'Nothing with a deadline';
+    list.appendChild(empty);
+    return;
+  }
+
+  const now = Date.now();
+  // Late work leads, because it is the most urgent thing the panel knows.
+  const overdue = entries.filter((entry) => Date.parse(entry.task.due) < now);
+  if (overdue.length) list.appendChild(renderUpcomingGroup('Overdue', overdue, true));
+
+  const byDay = new Map();
+  for (const entry of entries) {
+    if (Date.parse(entry.task.due) < now) continue;
+    const key = entry.task.due.slice(0, 10);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(entry);
+  }
+
+  // The entries were sorted before grouping, so the days come out in order too.
+  for (const [key, items] of byDay) {
+    list.appendChild(renderUpcomingGroup(dayHeading(key), items, false));
+  }
+}
+
+function renderUpcomingGroup(label, entries, overdue) {
+  const group = document.createElement('div');
+  group.className = 'up-group' + (overdue ? ' overdue' : '');
+
+  const heading = document.createElement('div');
+  heading.className = 'up-group-label';
+  heading.textContent = label;
+  group.appendChild(heading);
+
+  for (const { task, status } of entries) {
+    group.appendChild(renderUpcomingTask(task, status, overdue));
+  }
+
+  return group;
+}
+
+function renderUpcomingTask(task, status, overdue) {
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'up-task' + (overdue ? ' overdue' : '');
+  row.title = `${task.text}\n${formatDue(task.due)} - ${COLUMN_LABELS[status]}`;
+
+  const dot = document.createElement('span');
+  dot.className = `icon-dot dot-${status}`;
+  row.appendChild(dot);
+
+  const text = document.createElement('span');
+  text.className = 'up-text';
+  text.textContent = task.text;
+  row.appendChild(text);
+
+  // The heading above already gives the day, so the row only needs the time.
+  const time = document.createElement('span');
+  time.className = 'up-time';
+  time.textContent = formatTime(task.due);
+  row.appendChild(time);
+
+  row.addEventListener('click', () => openTaskFromCalendar(task, status));
+  return row;
+}
+
+// "Today" and "Tomorrow" are what you would say out loud; anything further off
+// gets its date.
+function dayHeading(key) {
+  const now = new Date();
+  if (key === dateKey(now)) return 'Today';
+
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  if (key === dateKey(tomorrow)) return 'Tomorrow';
+
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatTime(due) {
+  const date = new Date(due);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+// The names follow the user's locale, and the order follows their week.
+function renderWeekdays() {
+  const row = document.getElementById('cal-weekdays');
+  if (row.childElementCount) return;
+
+  const weekStart = firstDayOfWeek();
+  // An arbitrary Sunday to count forward from.
+  const sunday = new Date(2024, 0, 7);
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(2024, 0, sunday.getDate() + weekStart + i);
+    const label = document.createElement('div');
+    label.className = 'cal-weekday';
+    label.textContent = day.toLocaleDateString(undefined, { weekday: 'short' });
+    row.appendChild(label);
+  }
+}
+
+function renderCalendarDay(day, byDate, todayKey) {
+  const key = dateKey(day);
+
+  const cell = document.createElement('div');
+  cell.className = 'cal-day';
+  if (day.getMonth() !== calMonth.getMonth()) cell.classList.add('other-month');
+  if (key === todayKey) cell.classList.add('today');
+
+  const date = document.createElement('div');
+  date.className = 'cal-date';
+  date.textContent = day.getDate();
+  cell.appendChild(date);
+
+  for (const { task, status } of byDate.get(key) || []) {
+    cell.appendChild(renderCalendarTask(task, status));
+  }
+
+  return cell;
+}
+
+function renderCalendarTask(task, status) {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'cal-task';
+  if (status === 'done') {
+    chip.classList.add('done');
+  } else if (Date.parse(task.due) < Date.now()) {
+    chip.classList.add('overdue');
+  }
+  // The cell gives the day; the tooltip gives the time and the column.
+  chip.title = `${task.text}\n${formatDue(task.due)} - ${COLUMN_LABELS[status]}`;
+
+  const dot = document.createElement('span');
+  dot.className = `icon-dot dot-${status}`;
+  chip.appendChild(dot);
+
+  const text = document.createElement('span');
+  text.className = 'cal-task-text';
+  text.textContent = task.text;
+  chip.appendChild(text);
+
+  chip.addEventListener('click', () => openTaskFromCalendar(task, status));
+  return chip;
+}
+
+// A deadline is usually the reason to go looking for a task, so the calendar
+// hands you the card itself rather than just telling you it exists.
+function openTaskFromCalendar(task, status) {
+  // Its card cannot be reached while its column is hidden, so opening one
+  // brings that column back.
+  if (!visibleColumns.includes(status)) {
+    visibleColumns = STATUSES.filter((id) => id === status || visibleColumns.includes(id));
+    applyColumnVisibility();
+    syncColumnsPanel();
+  }
+
+  setView('board');
+  openEditor(task);
+  render();
+  focusTitleInput(task.id);
+
+  const card = document.querySelector(`.card[data-id="${task.id}"]`);
+  if (card) card.scrollIntoView({ block: 'nearest' });
 }
 
 function uid() {
@@ -343,6 +770,8 @@ async function init() {
       if (!task.additionalDescription) task.additionalDescription = '';
       // Anything saved before this field existed keeps showing its countdown.
       if (task.showCountdown === undefined) task.showCountdown = true;
+      // Cards start out open, including everything saved before they could fold.
+      task.collapsed = task.collapsed === true;
       // A reminder counts back from the due date, so without one there is none.
       task.remindOffset = clampRemindOffset(task.remindOffset);
       task.remind = task.remind === true && !!task.due;
@@ -354,8 +783,12 @@ async function init() {
   setupDropZones();
   setupAddZones();
   setupTrashZone();
-  setupThemeSelector();
-  setupColumnsMenu();
+  setupThemeOptions();
+  setupColumnsOptions();
+  setupFontOptions();
+  setupSettingsMenu();
+  setupCalendar();
+  setupViewToggle();
 
   document.getElementById('btn-min').addEventListener('click', () => window.tudo.minimize());
   document.getElementById('btn-close').addEventListener('click', () => window.tudo.close());
@@ -375,14 +808,22 @@ function render() {
     }
     document.getElementById(`count-${status}`).textContent = state[status].length;
   }
+
+  // Both views draw from state, so whichever is on show is redrawn with it.
+  if (view === 'calendar') renderCalendar();
 }
 
 function renderTask(task, status) {
   const editing = editingId === task.id;
+  // A card with nothing under its title but its deadline has nothing to fold
+  // away, so it gets no chevron rather than one that does nothing.
+  const collapsible = hasFoldableDetails(task);
+  const collapsed = collapsible && task.collapsed === true;
 
   const li = document.createElement('li');
   li.className =
-    'card' + (status === 'done' ? ' completed' : '') + (editing ? ' editing' : '');
+    'card' + (status === 'done' ? ' completed' : '') + (editing ? ' editing' : '') +
+    (collapsed ? ' collapsed' : '');
   li.draggable = false;
   li.dataset.id = task.id;
 
@@ -431,63 +872,19 @@ function renderTask(task, status) {
     title.addEventListener('click', () => {
       toggleEditor(task);
     });
-    li.appendChild(title);
 
-    const dueText = formatDue(task.due);
-    if (dueText) {
-      const dueRow = document.createElement('div');
-      dueRow.className = 'card-due-row';
-
-      const due = document.createElement('div');
-      due.className = 'card-due';
-      due.textContent = dueText;
-      dueRow.appendChild(due);
-
-      if (task.showCountdown !== false) {
-        const countdown = document.createElement('div');
-        countdown.className = 'card-countdown';
-        countdown.dataset.due = task.due;
-        countdown.textContent = formatCountdown(task.due);
-        if (countdown.textContent.startsWith('Overdue')) countdown.classList.add('overdue');
-        dueRow.appendChild(countdown);
-      }
-
-      li.appendChild(dueRow);
+    if (collapsible) {
+      const titleRow = document.createElement('div');
+      titleRow.className = 'card-title-row';
+      titleRow.appendChild(renderCollapseToggle(task, collapsed));
+      titleRow.appendChild(title);
+      li.appendChild(titleRow);
+    } else {
+      li.appendChild(title);
     }
 
-    // Without this the reminder is invisible until the card is opened again.
-    if (task.remind && task.due) {
-      const reminder = document.createElement('div');
-      reminder.className = 'card-reminder';
-      reminder.textContent = `Reminder ${formatOffset(task.remindOffset)}`;
-      if (task.reminderFired) reminder.classList.add('fired');
-      li.appendChild(reminder);
-    }
-
-    if (hasContent(task.additionalDescription)) {
-      const desc = document.createElement('div');
-      desc.className = 'card-desc';
-      desc.innerHTML = task.additionalDescription;
-      desc.querySelectorAll('a[href]').forEach((a) => {
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          window.tudo.openExternal(a.getAttribute('href'));
-        });
-      });
-      li.appendChild(desc);
-    }
-
-    if (task.importance && task.importance !== 'Not Set') {
-      const meta = document.createElement('div');
-      meta.className = 'card-meta';
-      const badge = document.createElement('span');
-      badge.className = `badge badge-${task.importance.toLowerCase().replace(/\s+/g, '-')}`;
-      badge.textContent = task.importance;
-      meta.appendChild(badge);
-      li.appendChild(meta);
-    }
+    appendDueRow(li, task);
+    if (!collapsed) appendTaskDetails(li, task);
   }
 
   handle.addEventListener('dragstart', (e) => {
@@ -508,6 +905,99 @@ function renderTask(task, status) {
   });
 
   return li;
+}
+
+// What a collapsed card folds away: the reminder note, the description and the
+// importance badge. The deadline is not in the list - it stays on show - so a
+// card whose only detail is a due date has nothing to fold and gets no chevron.
+function hasFoldableDetails(task) {
+  return Boolean(
+    (task.remind && task.due) ||
+    hasContent(task.additionalDescription) ||
+    (task.importance && task.importance !== 'Not Set')
+  );
+}
+
+// The chevron sits to the left of the title, clear of the buttons over the
+// top-right corner, so folding a card never means aiming at a hover-only icon.
+function renderCollapseToggle(task, collapsed) {
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'card-toggle';
+  toggle.title = collapsed ? 'Expand' : 'Collapse';
+  toggle.setAttribute('aria-expanded', String(!collapsed));
+  toggle.innerHTML = CHEVRON_ICON;
+  toggle.addEventListener('click', (e) => {
+    // The title beside it opens the editor; this must not do both.
+    e.stopPropagation();
+    task.collapsed = !collapsed;
+    persistAndRender();
+  });
+  return toggle;
+}
+
+// The deadline is the whole point of a card being on the board, so it survives
+// folding - as does its countdown, which is the half that keeps changing and
+// turns red once the task is late. The per-task "Show countdown" toggle still
+// decides whether that half is there at all.
+function appendDueRow(li, task) {
+  const dueText = formatDue(task.due);
+  if (!dueText) return;
+
+  const dueRow = document.createElement('div');
+  dueRow.className = 'card-due-row';
+
+  const due = document.createElement('div');
+  due.className = 'card-due';
+  due.textContent = dueText;
+  dueRow.appendChild(due);
+
+  if (task.showCountdown !== false) {
+    const countdown = document.createElement('div');
+    countdown.className = 'card-countdown';
+    countdown.dataset.due = task.due;
+    countdown.textContent = formatCountdown(task.due);
+    if (countdown.textContent.startsWith('Overdue')) countdown.classList.add('overdue');
+    dueRow.appendChild(countdown);
+  }
+
+  li.appendChild(dueRow);
+}
+
+function appendTaskDetails(li, task) {
+  // Without this the reminder is invisible until the card is opened again.
+  if (task.remind && task.due) {
+    const reminder = document.createElement('div');
+    reminder.className = 'card-reminder';
+    reminder.textContent = `Reminder ${formatOffset(task.remindOffset)}`;
+    if (task.reminderFired) reminder.classList.add('fired');
+    li.appendChild(reminder);
+  }
+
+  if (hasContent(task.additionalDescription)) {
+    const desc = document.createElement('div');
+    desc.className = 'card-desc';
+    desc.innerHTML = task.additionalDescription;
+    desc.querySelectorAll('a[href]').forEach((a) => {
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.tudo.openExternal(a.getAttribute('href'));
+      });
+    });
+    li.appendChild(desc);
+  }
+
+  if (task.importance && task.importance !== 'Not Set') {
+    const meta = document.createElement('div');
+    meta.className = 'card-meta';
+    const badge = document.createElement('span');
+    badge.className = `badge badge-${task.importance.toLowerCase().replace(/\s+/g, '-')}`;
+    badge.textContent = task.importance;
+    meta.appendChild(badge);
+    li.appendChild(meta);
+  }
 }
 
 function renderEditRow(task) {
@@ -1002,6 +1492,7 @@ function setupAddZones() {
         due: null,
         importance: 'Not Set',
         showCountdown: true,
+        collapsed: false,
         remind: false,
         remindOffset: 0,
         reminderFired: false,

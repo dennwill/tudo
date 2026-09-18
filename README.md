@@ -6,13 +6,17 @@ A tiny always-on-top desktop widget for tracking tasks. It stays on top of your 
 
 - Always-on-top window that stays visible while you work
 - Four columns: To-do, Doing, On Hold, Done
-- Show or hide any column from the Columns dropdown, with the choice remembered between restarts
+- One settings menu in the titlebar, behind the gear, holding the theme, the columns, and the font - each choice remembered between restarts
+- Show or hide any column from the Columns section of the settings menu
+- Switch between the board and a calendar with the view button in the titlebar, which shows the icon of the view it takes you to, to see every due date in one view. The calendar has two panels: a month grid on the left, where each task sits on its day with a dot for the column it is in, and an Upcoming list on the right, reading from the most overdue task down through today, tomorrow and the days after, whatever month they fall in. Overdue tasks are red and clicking any task in either panel takes you back to the board with its editor open. Move through the months with the arrows, come back with Today, and the view you were last in is remembered between restarts
 - Drag and drop tasks between columns, and drag them up or down to reorder within a column
+- Fold any card down to its title with the arrow beside it, and click the arrow again to open it back up - the due date and its countdown stay on show while folded, the reminder, description and importance badge are what gets hidden, the state is saved with the task, and a card with nothing to hide has no arrow
 - Click the edit button (or the card) to rename a task and set a due date and an importance level (Low, Medium, High) - Enter saves, Escape and Cancel drop the whole edit
 - Tick "Remind me" in the editor and choose how far ahead of the due date to be told - at the due time, 5/15/30 minutes, 1 or 2 hours, a day, or a custom number of hours and minutes - for a desktop notification about that task; move the due date and the reminder moves with it. The main process does the waiting, so reminders still arrive with the window hidden or in the tray, and anything whose time passed while the app was shut fires once on the next launch
 - Live countdown to the due date, which turns red once a task is overdue - the "Show countdown" toggle under the date in the editor hides it per task, leaving just the date
 - Drag a task to the trash zone to delete it, with an optional confirmation step
 - Choose from five themes: Dark Minimalist, Light Minimalist, Neo-Brutalism, Glassmorphism, and Windows 2000
+- Choose from five fonts: Plus Jakarta Sans, Poppins, Inter, Roboto, and Montserrat - the font is a setting of its own rather than part of a theme, so it stays put as you change themes
 - Tray icon to show, hide, or quit the app
 - Checks GitHub releases on launch: the titlebar reads "Latest version" when up to date, or shows an Update button that downloads and installs the new version in place
 - Tasks are saved automatically to a local file, so they persist between restarts

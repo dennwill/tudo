@@ -5,7 +5,7 @@
   <title>tudo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -17,11 +17,31 @@
       <button id="update-btn" class="update-btn" hidden></button>
     </div>
     <div id="window-controls">
-      <div class="columns-menu">
-        <button id="columns-btn" class="columns-btn" title="Show or hide columns" aria-haspopup="true" aria-expanded="false">Columns</button>
-        <div id="columns-panel" class="columns-panel" hidden></div>
+      <div class="view-switch">
+        <button id="view-btn" class="icon-btn" title="See due dates on a calendar"></button>
       </div>
-      <select id="theme-select" class="theme-select" title="Theme"></select>
+      <div class="settings-menu">
+        <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <div id="settings-panel" class="settings-panel" hidden>
+          <div class="settings-group">
+            <div class="settings-heading">Theme</div>
+            <div id="theme-options"></div>
+          </div>
+          <div class="settings-group" id="columns-group">
+            <div class="settings-heading">Columns</div>
+            <div id="columns-options"></div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-heading">Font</div>
+            <div id="font-options"></div>
+          </div>
+        </div>
+      </div>
       <button id="btn-min" title="Minimize">&#8211;</button>
       <button id="btn-close" title="Hide">&#10005;</button>
     </div>
@@ -84,6 +104,28 @@
       </div>
     </section>
   </div>
+
+  <section class="calendar" id="calendar" hidden>
+    <div class="cal-pane">
+      <div class="cal-head">
+        <button type="button" class="cal-nav" id="cal-prev" title="Previous month">&#8249;</button>
+        <button type="button" class="cal-nav" id="cal-next" title="Next month">&#8250;</button>
+        <div class="cal-month" id="cal-month"></div>
+        <button type="button" class="cal-today" id="cal-today" title="Back to this month">Today</button>
+      </div>
+      <div class="cal-weekdays" id="cal-weekdays"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-undated" id="cal-undated" hidden></div>
+    </div>
+
+    <aside class="upcoming" id="upcoming">
+      <div class="upcoming-head">
+        <span class="upcoming-title">Upcoming</span>
+        <span class="count" id="upcoming-count">0</span>
+      </div>
+      <div class="upcoming-list" id="upcoming-list"></div>
+    </aside>
+  </section>
 
   <div id="trash-zone">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
