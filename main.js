@@ -4,9 +4,30 @@ const path = require('path');
 const fs = require('fs');
 
 const DATA_FILE = path.join(app.getPath('userData'), 'tudo-data.json');
+// Sync keeps its own file, so the tasks file stays exactly as it always was
+// (and still opens in an older version, or on the phone).
+const SYNC_FILE = path.join(app.getPath('userData'), 'tudo-sync.json');
 
 let mainWindow;
 let tray;
+
+function loadSyncFile() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(SYNC_FILE, 'utf-8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.error('tudo: failed to read sync file, starting fresh:', err);
+    return {};
+  }
+}
+
+// config (key, server, on/off) and state (what has been synced) are saved on
+// different schedules, so each write keeps the other half as it found it.
+function updateSyncFile(patch) {
+  const tmpFile = `${SYNC_FILE}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify({ ...loadSyncFile(), ...patch }, null, 2));
+  fs.renameSync(tmpFile, SYNC_FILE);
+}
 
 function loadTasks() {
   let raw;
@@ -108,7 +129,11 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // Closing the window only hides it, and sync keeps its connection in the
+      // page. Chromium would slow a hidden page's timers to a crawl, and with
+      // them the reconnecting and the heartbeat.
+      backgroundThrottling: false
     }
   });
 
@@ -130,6 +155,13 @@ function createTray() {
       click: () => {
         if (!mainWindow) return;
         mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+      }
+    },
+    {
+      // Syncs and re-checks everything without opening the window.
+      label: 'Refresh',
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('app:refresh');
       }
     },
     {
@@ -252,6 +284,39 @@ ipcMain.handle('tasks:save', (_event, data) => {
     return { ok: true };
   } catch (err) {
     console.error('tudo: failed to save tasks:', err);
+    return { ok: false, error: err.message };
+  }
+});
+ipcMain.handle('sync:load', () => {
+  const saved = loadSyncFile();
+  return {
+    config: saved.config && typeof saved.config === 'object' ? saved.config : null,
+    state: saved.state && typeof saved.state === 'object' ? saved.state : null,
+  };
+});
+ipcMain.handle('sync:save-config', (_event, config) => {
+  if (!config || typeof config !== 'object') return { ok: false };
+  try {
+    updateSyncFile({
+      config: {
+        enabled: config.enabled === true,
+        url: typeof config.url === 'string' ? config.url : '',
+        key: typeof config.key === 'string' ? config.key : '',
+      },
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error('tudo: failed to save sync settings:', err);
+    return { ok: false, error: err.message };
+  }
+});
+ipcMain.handle('sync:save-state', (_event, state) => {
+  if (!state || typeof state !== 'object') return { ok: false };
+  try {
+    updateSyncFile({ state });
+    return { ok: true };
+  } catch (err) {
+    console.error('tudo: failed to save sync state:', err);
     return { ok: false, error: err.message };
   }
 });

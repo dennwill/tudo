@@ -15,8 +15,18 @@
       <h1>tudo</h1>
       <span id="version-label" class="version-label" hidden></span>
       <button id="update-btn" class="update-btn" hidden></button>
+      <span id="sync-dot" class="sync-dot" hidden></span>
     </div>
     <div id="window-controls">
+      <div class="view-switch">
+        <button id="refresh-btn" class="icon-btn" title="Refresh (F5)" aria-label="Refresh">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
       <div class="view-switch">
         <button id="view-btn" class="icon-btn" title="See due dates on a calendar"></button>
       </div>
@@ -39,6 +49,44 @@
           <div class="settings-group">
             <div class="settings-heading">Font</div>
             <div id="font-options"></div>
+          </div>
+          <div class="settings-group" id="sync-group">
+            <div class="settings-heading">Sync</div>
+            <div id="sync-status" class="sync-status" role="status"></div>
+
+            <!-- Above both of the blocks below, so a different server can be chosen
+                 before anything is sent to the default one. -->
+            <div class="sync-block">
+              <details class="sync-server">
+                <summary>Server</summary>
+                <div class="sync-row">
+                  <input type="text" id="sync-url" class="sync-input" spellcheck="false" autocomplete="off" />
+                  <button type="button" id="sync-url-reset" class="sync-btn">Default</button>
+                </div>
+              </details>
+            </div>
+
+            <!-- No key yet: start a new one, or join with one from another device. -->
+            <div id="sync-setup" class="sync-block">
+              <button type="button" id="sync-new" class="sync-btn">Create a sync key</button>
+              <div class="sync-or">or join with a key from another device</div>
+              <div class="sync-row">
+                <input type="text" id="sync-join-input" class="sync-input" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" autocomplete="off" maxlength="40" />
+                <button type="button" id="sync-join" class="sync-btn">Join</button>
+              </div>
+              <div class="sync-or">Your tasks are merged with theirs; nothing is replaced.</div>
+            </div>
+
+            <!-- Has a key: show it, switch sync on and off, change server, or stop. -->
+            <div id="sync-active" class="sync-block" hidden>
+              <div class="sync-row">
+                <code id="sync-key" class="sync-key"></code>
+                <button type="button" id="sync-reveal" class="sync-btn">Show</button>
+                <button type="button" id="sync-copy" class="sync-btn">Copy</button>
+              </div>
+              <label class="settings-option"><input type="checkbox" id="sync-enabled" /> Sync is on</label>
+              <button type="button" id="sync-leave" class="sync-btn sync-btn-danger">Stop syncing</button>
+            </div>
           </div>
         </div>
       </div>
@@ -152,8 +200,25 @@
     </div>
   </div>
 
+  <div id="newtask-overlay" hidden>
+    <form id="newtask-modal" role="dialog" aria-modal="true" aria-labelledby="newtask-heading">
+      <p id="newtask-heading"></p>
+      <input type="text" id="newtask-title" placeholder="Task title..." aria-label="Task title" autocomplete="off" />
+      <label id="newtask-time-label">
+        Due at
+        <input type="time" id="newtask-time" />
+      </label>
+      <div id="newtask-actions">
+        <button type="button" id="newtask-cancel">Cancel</button>
+        <button type="submit" id="newtask-add">Add task</button>
+      </div>
+    </form>
+  </div>
+
   <div id="toast" hidden></div>
 
+  <script src="sync-core.js"></script>
+  <script src="sync-client.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

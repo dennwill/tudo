@@ -647,9 +647,18 @@ function renderCalendarDay(day, byDate, todayKey) {
   if (day.getMonth() !== calMonth.getMonth()) cell.classList.add('other-month');
   if (key === todayKey) cell.classList.add('today');
 
-  const date = document.createElement('div');
+  // Any day can start a task. The whole cell takes the click; the date is a real
+  // button so the keyboard and screen readers can reach it too, and its click
+  // bubbles up to the cell.
+  const heading = day.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  cell.title = `Add a task on ${heading}`;
+  cell.addEventListener('click', () => openNewTaskDialog(key, heading));
+
+  const date = document.createElement('button');
+  date.type = 'button';
   date.className = 'cal-date';
   date.textContent = day.getDate();
+  date.setAttribute('aria-label', `Add a task on ${heading}`);
   cell.appendChild(date);
 
   for (const { task, status } of byDate.get(key) || []) {
@@ -680,8 +689,83 @@ function renderCalendarTask(task, status) {
   text.textContent = task.text;
   chip.appendChild(text);
 
-  chip.addEventListener('click', () => openTaskFromCalendar(task, status));
+  chip.addEventListener('click', (e) => {
+    // The chip sits inside a day that starts a new task when clicked.
+    e.stopPropagation();
+    openTaskFromCalendar(task, status);
+  });
   return chip;
+}
+
+/* ---------------------------------------------------------------- new task */
+
+// A task started from a calendar day. It is only created when Add is pressed, so
+// closing the dialog leaves nothing behind.
+let newTaskDay = null;
+let newTaskOpener = null;
+
+function openNewTaskDialog(key, heading) {
+  newTaskDay = key;
+  newTaskOpener = document.activeElement;
+  document.getElementById('newtask-heading').textContent = `New task - ${heading}`;
+  document.getElementById('newtask-title').value = '';
+  // 9am, a sensible time to land on when only a day has been chosen.
+  document.getElementById('newtask-time').value = '09:00';
+  document.getElementById('newtask-overlay').hidden = false;
+  document.getElementById('newtask-title').focus();
+}
+
+function closeNewTaskDialog() {
+  newTaskDay = null;
+  document.getElementById('newtask-overlay').hidden = true;
+  if (newTaskOpener && newTaskOpener.isConnected) newTaskOpener.focus();
+  newTaskOpener = null;
+}
+
+function setupNewTaskDialog() {
+  const overlay = document.getElementById('newtask-overlay');
+  const titleInput = document.getElementById('newtask-title');
+  const timeInput = document.getElementById('newtask-time');
+  titleInput.maxLength = TITLE_MAX_LENGTH;
+
+  document.getElementById('newtask-modal').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = titleInput.value.trim();
+    if (!text) {
+      showToast('A task needs a title');
+      titleInput.focus();
+      return;
+    }
+
+    state.todo.push({
+      id: uid(),
+      text,
+      due: `${newTaskDay}T${timeInput.value || '09:00'}`,
+      importance: 'Not Set',
+      showCountdown: true,
+      collapsed: false,
+      remind: false,
+      remindOffset: 0,
+      reminderFired: false,
+      additionalDescription: '',
+    });
+    // The new task lives on the day that was clicked, so there is nothing to
+    // navigate to: the calendar redraws with it in place.
+    newTaskOpener = null;
+    closeNewTaskDialog();
+    persistAndRender();
+  });
+
+  document.getElementById('newtask-cancel').addEventListener('click', closeNewTaskDialog);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeNewTaskDialog();
+  });
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeNewTaskDialog();
+    }
+  });
 }
 
 // A deadline is usually the reason to go looking for a task, so the calendar
@@ -788,6 +872,7 @@ async function init() {
   setupFontOptions();
   setupSettingsMenu();
   setupCalendar();
+  setupNewTaskDialog();
   setupViewToggle();
 
   document.getElementById('btn-min').addEventListener('click', () => window.tudo.minimize());
@@ -797,6 +882,8 @@ async function init() {
   window.tudo.onReminderFired(markReminderFired);
   syncReminders();
   setInterval(updateCountdowns, 1000);
+  setupSync();
+  setupRefresh();
 }
 
 function render() {
@@ -1588,6 +1675,9 @@ function setupUpdateCheck() {
 async function persistAndRender() {
   render();
   syncReminders();
+  // Every change to the board passes through here, so this is the one place sync
+  // needs to hear about it. A no-op while sync is off.
+  if (syncClient) syncClient.localChanged();
   const result = await window.tudo.saveTasks(state);
   if (!result || !result.ok) {
     showToast("Couldn't save changes");
@@ -1662,6 +1752,269 @@ function markReminderFired(id) {
     persistAndRender();
     return;
   }
+}
+
+/* -------------------------------------------------------------------- sync */
+
+/*
+ * Real-time sync with the other devices that share this one's key - see
+ * sync-core.js for how boards are merged and sync-client.js for the connection.
+ * This is only the glue: what to call when the board changes, what to do when
+ * the merged board comes back, and the controls in the settings menu.
+ */
+
+const SyncCore = window.TudoSyncCore;
+const SYNC_DEFAULT_URL = SyncCore.DEFAULT_SERVER_URL;
+
+let syncClient = null;
+let syncConfig = { enabled: false, url: SYNC_DEFAULT_URL, key: '' };
+let syncKeyShown = false;
+let syncLeaveTimer = null;
+
+function newSyncClientId() {
+  const bytes = new Uint8Array(9);
+  crypto.getRandomValues(bytes);
+  return 'desk-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// A board with another device's changes folded in. Goes through the same path as
+// any edit, so it is drawn, saved and its reminders re-armed.
+function applySyncedBoard(board) {
+  for (const status of STATUSES) state[status] = board[status];
+  // The card being edited may have just been deleted from the other device.
+  if (editingId && !STATUSES.some((s) => state[s].some((t) => t.id === editingId))) {
+    closeEditor();
+  }
+  persistAndRender();
+}
+
+function showSyncStatus(status) {
+  const line = document.getElementById('sync-status');
+  const dot = document.getElementById('sync-dot');
+
+  const others = status.devices - 1;
+  const text = {
+    off: syncConfig.key ? 'Sync is paused' : 'Not syncing',
+    connecting: 'Connecting...',
+    connected:
+      others > 0
+        ? `Synced with ${others} other device${others === 1 ? '' : 's'}`
+        : 'Synced - no other device online',
+    offline: status.message ? `Offline: ${status.message}` : 'Offline - retrying',
+    error: status.message || 'Sync stopped',
+  }[status.state];
+  const tone =
+    status.state === 'connected'
+      ? 'is-connected'
+      : status.state === 'connecting' || status.state === 'offline'
+        ? 'is-busy'
+        : status.state === 'error'
+          ? 'is-error'
+          : '';
+
+  line.textContent = text;
+  line.className = `sync-status ${tone}`.trim();
+
+  // The same state, one glance away, for when the menu is shut.
+  dot.hidden = status.state === 'off';
+  dot.className = `sync-dot ${tone}`.trim();
+  dot.title = text;
+}
+
+function renderSyncControls() {
+  const hasKey = !!syncConfig.key;
+  document.getElementById('sync-setup').hidden = hasKey;
+  document.getElementById('sync-active').hidden = !hasKey;
+
+  // The server can be chosen with or without a key.
+  const urlInput = document.getElementById('sync-url');
+  if (document.activeElement !== urlInput) urlInput.value = syncConfig.url;
+  if (!hasKey) return;
+
+  const shown = SyncCore.formatKey(syncConfig.key);
+  document.getElementById('sync-key').textContent = syncKeyShown ? shown : shown.replace(/[A-Z0-9]/g, '•');
+  document.getElementById('sync-reveal').textContent = syncKeyShown ? 'Hide' : 'Show';
+  document.getElementById('sync-enabled').checked = syncConfig.enabled;
+}
+
+// Saves the settings and re-aims the connection at them.
+async function updateSyncConfig(patch) {
+  syncConfig = { ...syncConfig, ...patch };
+  renderSyncControls();
+  const result = await window.tudo.saveSyncConfig(syncConfig);
+  if (!result || !result.ok) showToast("Couldn't save sync settings");
+  if (syncClient) syncClient.configure(syncConfig);
+}
+
+async function copySyncKey(button) {
+  const text = SyncCore.formatKey(syncConfig.key);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Older paths: select something and copy it.
+    const box = document.createElement('textarea');
+    box.value = text;
+    box.style.position = 'fixed';
+    box.style.opacity = '0';
+    document.body.appendChild(box);
+    box.select();
+    document.execCommand('copy');
+    box.remove();
+  }
+  button.textContent = 'Copied';
+  setTimeout(() => {
+    button.textContent = 'Copy';
+  }, 1500);
+}
+
+function resetSyncLeaveButton() {
+  clearTimeout(syncLeaveTimer);
+  syncLeaveTimer = null;
+  document.getElementById('sync-leave').textContent = 'Stop syncing';
+}
+
+async function setupSync() {
+  const saved = (await window.tudo.loadSync()) || {};
+  const cfg = saved.config || {};
+  const key = SyncCore.normalizeKey(cfg.key) || '';
+  syncConfig = {
+    enabled: cfg.enabled === true && !!key,
+    url: SyncCore.normalizeServerUrl(cfg.url) || SYNC_DEFAULT_URL,
+    key,
+  };
+
+  syncClient = new window.TudoSyncClient.SyncClient({
+    WebSocketImpl: WebSocket,
+    getBoard: () => state,
+    applyBoard: applySyncedBoard,
+    loadState: async () => saved.state || null,
+    saveState: (s) => window.tudo.saveSyncState(s),
+    onStatus: showSyncStatus,
+    newClientId: newSyncClientId,
+  });
+
+  const randomBytes = (n) => crypto.getRandomValues(new Uint8Array(n));
+
+  document.getElementById('sync-new').addEventListener('click', () => {
+    syncKeyShown = true;
+    updateSyncConfig({ enabled: true, key: SyncCore.generateKey(randomBytes) });
+  });
+
+  const join = () => {
+    const input = document.getElementById('sync-join-input');
+    const joined = SyncCore.normalizeKey(input.value);
+    if (!joined) {
+      showToast('That is not a valid sync key');
+      return;
+    }
+    input.value = '';
+    syncKeyShown = false;
+    updateSyncConfig({ enabled: true, key: joined });
+  };
+  document.getElementById('sync-join').addEventListener('click', join);
+  document.getElementById('sync-join-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      join();
+    }
+  });
+
+  document.getElementById('sync-reveal').addEventListener('click', () => {
+    syncKeyShown = !syncKeyShown;
+    renderSyncControls();
+  });
+  document.getElementById('sync-copy').addEventListener('click', (e) => copySyncKey(e.currentTarget));
+  document.getElementById('sync-enabled').addEventListener('change', (e) => {
+    updateSyncConfig({ enabled: e.target.checked });
+  });
+
+  const urlInput = document.getElementById('sync-url');
+  urlInput.addEventListener('change', () => {
+    const url = SyncCore.normalizeServerUrl(urlInput.value);
+    if (!url) {
+      showToast('That is not a valid server address');
+      urlInput.value = syncConfig.url;
+      return;
+    }
+    if (SyncCore.isInsecureUrl(url)) showToast('ws:// is not encrypted - use wss:// across the internet');
+    updateSyncConfig({ url });
+  });
+  document.getElementById('sync-url-reset').addEventListener('click', () => {
+    updateSyncConfig({ url: SYNC_DEFAULT_URL });
+  });
+
+  // Forgetting the key is the one thing here that is awkward to undo, so it
+  // takes a second press.
+  document.getElementById('sync-leave').addEventListener('click', (e) => {
+    if (!syncLeaveTimer) {
+      e.currentTarget.textContent = 'Click again to confirm';
+      syncLeaveTimer = setTimeout(resetSyncLeaveButton, 4000);
+      return;
+    }
+    resetSyncLeaveButton();
+    syncKeyShown = false;
+    updateSyncConfig({ enabled: false, key: '' });
+  });
+
+  // Coming back to the window, or the network coming back, is the moment to
+  // reconnect rather than wait out a retry delay.
+  window.addEventListener('online', () => syncClient.nudge());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncClient.nudge();
+  });
+
+  renderSyncControls();
+  showSyncStatus(syncClient.getStatus());
+  syncClient.configure(syncConfig);
+}
+
+/* ----------------------------------------------------------------- refresh */
+
+let refreshInFlight = false;
+
+// Bring everything up to date now: sync with the relay if it is switched on,
+// re-arm the reminders, and ask whether there is a newer version of the app.
+// The arrows turn while it works, and for at least half a second even when it is
+// instant, because a button that seems to do nothing gets pressed again.
+async function refreshAll() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+
+  const button = document.getElementById('refresh-btn');
+  button.classList.add('is-spinning');
+  button.disabled = true;
+  const minimum = new Promise((resolve) => setTimeout(resolve, 500));
+
+  try {
+    syncReminders();
+    // Not awaited: it can take a while, and has its own place in the titlebar.
+    runUpdateCheck();
+
+    const result = syncClient ? await syncClient.refresh() : 'off';
+    if (result === 'offline') showToast("Couldn't reach the sync server");
+    else if (result === 'error') showToast('The sync server refused - see Sync in the gear menu');
+  } finally {
+    await minimum;
+    button.classList.remove('is-spinning');
+    button.disabled = false;
+    refreshInFlight = false;
+  }
+}
+
+function setupRefresh() {
+  document.getElementById('refresh-btn').addEventListener('click', refreshAll);
+
+  // F5 and Ctrl+R reload the page in a browser, which in this app would throw
+  // away an edit in progress. Here they refresh, which doesn't.
+  document.addEventListener('keydown', (e) => {
+    const isRefresh = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r');
+    if (!isRefresh) return;
+    e.preventDefault();
+    refreshAll();
+  });
+
+  // The tray menu's Refresh.
+  window.tudo.onRefreshRequested(refreshAll);
 }
 
 init();

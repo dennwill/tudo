@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0 - 2026-10-05
+
+- Clicking any day on the calendar now starts a new task due on it: a small dialog asks for a title and a time (9:00 by default) and adds the task to To-do. Closing it with Cancel or Escape adds nothing
+- Added real-time sync with the Android app and other devices, through your own relay server: make a sync key in the gear menu, join with it elsewhere, and tasks, edits, moves and deletes follow within a fraction of a second. Offline devices catch up when they reconnect
+- Sync settings live under Sync in the gear menu, with a small status dot beside the app name. The relay's address can be chosen before a key is created
+- Added a Refresh button to the titlebar (F5 and Ctrl+R too, and in the tray menu): it syncs with the relay now, re-arms reminders and checks for updates, and says so if the relay can't be reached
+
 ## 1.4.0 - 2026-09-18
 
 - Added a calendar view: a month grid with each task on its due date, and an Upcoming panel reading from the most overdue task down through today and the days after - clicking a task in either panel goes back to the board with its editor open

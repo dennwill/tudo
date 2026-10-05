@@ -376,6 +376,29 @@ body {
   display: block;
 }
 
+/* Refresh: the arrows turn while it works. */
+.icon-btn.is-spinning svg {
+  animation: tudo-spin 0.8s linear infinite;
+}
+
+.icon-btn:disabled {
+  cursor: default;
+}
+
+@keyframes tudo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Whoever has asked for less motion still sees that it is busy. */
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn.is-spinning svg {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
 .icon-btn:hover,
 .icon-btn[aria-expanded="true"] {
   border-color: rgba(255, 255, 255, 0.25);
@@ -391,7 +414,9 @@ body {
   display: flex;
   flex-direction: column;
   padding: 6px;
-  min-width: 152px;
+  /* Wide enough for a sync key (XXXXX-XXXXX-XXXXX-XXXXX) on one line. */
+  min-width: 216px;
+  max-width: calc(100vw - 20px);
   /* Taller than the window once every section is open, so it scrolls rather
      than running off the bottom. */
   max-height: calc(100vh - 54px);
@@ -460,6 +485,127 @@ body {
 .settings-option input:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+/* ---------- Sync (inside the settings panel) ---------- */
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 5px 5px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.sync-status::before,
+.sync-dot {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+
+.sync-status.is-connected::before,
+.sync-dot.is-connected { background: #34d399; }
+.sync-status.is-busy::before,
+.sync-dot.is-busy { background: #f59e0b; }
+.sync-status.is-error::before,
+.sync-dot.is-error { background: var(--danger); }
+
+.sync-dot {
+  display: inline-block;
+}
+
+.sync-dot[hidden] {
+  display: none;
+}
+
+.sync-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 5px;
+}
+
+.sync-block[hidden] {
+  display: none;
+}
+
+.sync-block .settings-option {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sync-or {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.sync-input,
+.sync-key {
+  flex: 1;
+  min-width: 0;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-xs);
+  padding: 4px 6px;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text);
+  outline: none;
+}
+
+.sync-key {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+
+.sync-btn {
+  flex-shrink: 0;
+  border: var(--border-w) solid var(--border);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-bevel);
+  color: var(--text);
+  font-size: 10.5px;
+  font-family: var(--font-body);
+  text-transform: var(--heading-transform);
+  letter-spacing: var(--heading-tracking);
+  border-radius: var(--radius-xs);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.sync-btn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.sync-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sync-btn-danger {
+  color: var(--danger);
+  border-color: rgba(var(--danger-rgb), 0.45);
+}
+
+.sync-server summary {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 0 4px;
 }
 
 #window-controls > button {
@@ -751,6 +897,12 @@ body {
   border: var(--border-w) solid var(--border);
   border-radius: var(--radius-xs);
   backdrop-filter: var(--surface-blur);
+  /* A click anywhere on a day starts a task due on it. */
+  cursor: pointer;
+}
+
+.cal-day:hover {
+  border-color: var(--border-focus);
 }
 
 /* Days either side of the month stay in place, dimmed, so the weeks read
@@ -764,12 +916,17 @@ body {
   background: var(--accent-glow);
 }
 
+/* A button, so the keyboard can reach it, but dressed as plain text. */
 .cal-date {
   font-family: var(--font-mono);
   font-size: 9.5px;
   color: var(--text-muted);
   text-align: right;
   flex-shrink: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
 .cal-day.today .cal-date {
@@ -1568,7 +1725,8 @@ body.dragging-card #trash-zone {
   border-radius: 3px;
 }
 
-#confirm-overlay {
+#confirm-overlay,
+#newtask-overlay {
   position: fixed;
   inset: 0;
   background: var(--overlay-bg);
@@ -1579,11 +1737,13 @@ body.dragging-card #trash-zone {
   z-index: 100;
 }
 
-#confirm-overlay[hidden] {
+#confirm-overlay[hidden],
+#newtask-overlay[hidden] {
   display: none;
 }
 
-#confirm-modal {
+#confirm-modal,
+#newtask-modal {
   width: min(280px, calc(100% - 40px));
   background: var(--modal-bg);
   border: var(--border-w) solid var(--border);
@@ -1595,7 +1755,8 @@ body.dragging-card #trash-zone {
   box-shadow: var(--modal-shadow);
 }
 
-#confirm-message {
+#confirm-message,
+#newtask-heading {
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -1616,13 +1777,39 @@ body.dragging-card #trash-zone {
   accent-color: var(--accent);
 }
 
-#confirm-actions {
+#newtask-modal input {
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 11.5px;
+  font-family: var(--font-body);
+  color: var(--text);
+  outline: none;
+}
+
+#newtask-modal input::placeholder {
+  color: var(--text-muted);
+}
+
+#newtask-time-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+#confirm-actions,
+#newtask-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-#confirm-actions button {
+#confirm-actions button,
+#newtask-actions button {
   border: var(--border-w) solid var(--border);
   background: var(--btn-bg);
   box-shadow: var(--btn-bevel);
@@ -1636,9 +1823,19 @@ body.dragging-card #trash-zone {
   cursor: pointer;
 }
 
-#confirm-actions button:hover {
+#confirm-actions button:hover,
+#newtask-actions button:hover {
   border-color: rgba(255, 255, 255, 0.25);
   background: var(--btn-bg-hover);
+}
+
+#newtask-actions button#newtask-add {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+#newtask-actions button#newtask-add:hover {
+  border-color: var(--accent);
 }
 
 #confirm-actions button#confirm-delete {
