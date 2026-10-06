@@ -816,7 +816,9 @@ body {
 }
 
 .cal-nav,
-.cal-today {
+.cal-today,
+.dt-nav,
+.dt-btn {
   height: 20px;
   border: var(--border-w) solid var(--border);
   background: var(--btn-bg);
@@ -832,7 +834,8 @@ body {
   line-height: 1;
 }
 
-.cal-nav {
+.cal-nav,
+.dt-nav {
   width: 20px;
   padding: 0;
   font-size: 13px;
@@ -840,7 +843,9 @@ body {
 }
 
 .cal-nav:hover,
-.cal-today:hover {
+.cal-today:hover,
+.dt-nav:hover,
+.dt-btn:hover {
   border-color: rgba(255, 255, 255, 0.25);
   color: var(--text);
   background: var(--btn-bg-hover);
@@ -1469,6 +1474,7 @@ body.dragging-card #trash-zone {
 
 .card-edit-top {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1531,7 +1537,6 @@ body.dragging-card #trash-zone {
   cursor: default;
 }
 
-.due-input,
 .importance-select {
   background: var(--card-bg);
   border: var(--border-w) solid var(--border-focus);
@@ -1543,16 +1548,331 @@ body.dragging-card #trash-zone {
   outline: none;
 }
 
-.due-input {
-  flex: 1;
-  min-width: 0;
-  color-scheme: var(--color-scheme);
-}
-
 .importance-select {
   width: 90px;
   flex-shrink: 0;
   font-family: var(--font-mono);
+}
+
+/* ---------- Date and time picker ---------- */
+
+/* The due date in a card's editor: one bordered control holding the button that
+   opens the picker and the cross that clears the date. */
+.due-field {
+  flex: 1 1 128px;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-sm);
+}
+
+.due-field:focus-within,
+.due-field.is-open {
+  border-color: var(--accent);
+}
+
+.due-trigger {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+.due-field.is-empty .due-trigger {
+  color: var(--text-muted);
+}
+
+.due-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  display: flex;
+  color: var(--text-muted);
+}
+
+.due-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.due-trigger:hover .due-icon,
+.due-field:focus-within .due-icon,
+.due-field.is-open .due-icon {
+  color: var(--accent-text);
+}
+
+.due-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fixed to the window and placed in JS: a card's stack scrolls and clips, so
+   anything absolutely positioned inside it would be cut off at the column edge. */
+.dt-popover {
+  position: fixed;
+  z-index: 110;
+  width: 232px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px;
+  overflow-y: auto;
+  background: var(--modal-bg);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--modal-shadow);
+  /* Glassmorphism's panel is translucent, so what is behind it is blurred out. */
+  backdrop-filter: var(--surface-blur);
+  outline: none;
+  animation: dt-pop 0.12s ease-out;
+}
+
+/* Only seen in a window too short for the whole picker. */
+.dt-popover::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dt-popover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+@keyframes dt-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-popover {
+    animation: none;
+  }
+}
+
+.dt-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dt-month {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: var(--heading-transform);
+  letter-spacing: var(--heading-tracking);
+}
+
+.dt-weekdays,
+.dt-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.dt-weekdays div {
+  text-align: center;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dt-day {
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  cursor: pointer;
+  outline: none;
+}
+
+.dt-day:hover {
+  background: var(--btn-bg-hover);
+}
+
+.dt-day.other-month {
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+
+/* Today is ringed rather than filled, so it stays visible once it is chosen. */
+.dt-day.today {
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.dt-day.selected {
+  background: var(--accent);
+  border-color: var(--border-focus);
+  color: #fff;
+  opacity: 1;
+  font-weight: 700;
+}
+
+.dt-day:focus-visible,
+.dt-nav:focus-visible,
+.dt-btn:focus-visible,
+.time-preset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-glow), 0 0 0 3px var(--accent);
+}
+
+.time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.time-box {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-sm);
+}
+
+.time-box:focus-within {
+  border-color: var(--accent);
+}
+
+.time-part {
+  width: 26px;
+  padding: 3px 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+}
+
+.time-part:focus {
+  background: var(--accent-glow);
+}
+
+.time-sep {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.time-ampm {
+  display: flex;
+  margin-left: 5px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.time-ampm button {
+  padding: 3px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.time-ampm button:hover {
+  color: var(--text);
+  background: var(--btn-bg-hover);
+}
+
+.time-ampm button[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.time-ampm button:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent-glow), inset 0 0 0 3px var(--accent);
+}
+
+.time-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.time-preset {
+  padding: 3px 0;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-bevel);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+}
+
+.time-preset:hover {
+  color: var(--text);
+  background: var(--btn-bg-hover);
+}
+
+.time-preset.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.dt-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 7px;
+  border-top: var(--border-w) solid var(--border);
+}
+
+.dt-clear:hover {
+  color: var(--danger);
+}
+
+.dt-done {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+.dt-done:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .desc-editor {
@@ -1777,7 +2097,7 @@ body.dragging-card #trash-zone {
   accent-color: var(--accent);
 }
 
-#newtask-modal input {
+#newtask-title {
   background: var(--card-bg);
   border: var(--border-w) solid var(--border-focus);
   border-radius: var(--radius-sm);
@@ -1788,15 +2108,17 @@ body.dragging-card #trash-zone {
   outline: none;
 }
 
-#newtask-modal input::placeholder {
+#newtask-title::placeholder {
   color: var(--text-muted);
 }
 
-#newtask-time-label {
+#newtask-time-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#newtask-time-label {
   font-size: 11.5px;
   color: var(--text-muted);
 }

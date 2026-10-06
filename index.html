@@ -204,10 +204,10 @@
     <form id="newtask-modal" role="dialog" aria-modal="true" aria-labelledby="newtask-heading">
       <p id="newtask-heading"></p>
       <input type="text" id="newtask-title" placeholder="Task title..." aria-label="Task title" autocomplete="off" />
-      <label id="newtask-time-label">
-        Due at
-        <input type="time" id="newtask-time" />
-      </label>
+      <div id="newtask-time-row">
+        <span id="newtask-time-label">Due at</span>
+        <div id="newtask-time"></div>
+      </div>
       <div id="newtask-actions">
         <button type="button" id="newtask-cancel">Cancel</button>
         <button type="submit" id="newtask-add">Add task</button>

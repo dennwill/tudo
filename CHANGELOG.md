@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 - 2026-10-06
+
+- Due dates are now set with a picker that follows the theme, in place of the browser's own: a month grid to choose the day, hour and minute fields you can type into or step with the arrow keys and mouse wheel (with AM/PM on a 12-hour clock), one-tap times for 9, 12, 5 and 9 in the evening, and Today and Clear buttons
+- The picker works from the keyboard - arrow keys move between days, Page Up and Down between months, and Escape closes just the picker - and follows your system's language, clock and first day of the week
+- Fixed the due date in a card's editor being squeezed down to just its calendar icon on narrow cards: it is now a full-width button showing the date
+- The time field in the new-task dialog started from a calendar day is the same one, with the same one-tap times
+
 ## 1.5.0 - 2026-10-05
 
 - Clicking any day on the calendar now starts a new task due on it: a small dialog asks for a title and a time (9:00 by default) and adds the task to To-do. Closing it with Cancel or Escape adds nothing

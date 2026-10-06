@@ -703,6 +703,7 @@ function renderCalendarTask(task, status) {
 // closing the dialog leaves nothing behind.
 let newTaskDay = null;
 let newTaskOpener = null;
+let newTaskTime = null;
 
 function openNewTaskDialog(key, heading) {
   newTaskDay = key;
@@ -710,7 +711,7 @@ function openNewTaskDialog(key, heading) {
   document.getElementById('newtask-heading').textContent = `New task - ${heading}`;
   document.getElementById('newtask-title').value = '';
   // 9am, a sensible time to land on when only a day has been chosen.
-  document.getElementById('newtask-time').value = '09:00';
+  newTaskTime.setValue(DEFAULT_DUE_TIME);
   document.getElementById('newtask-overlay').hidden = false;
   document.getElementById('newtask-title').focus();
 }
@@ -725,8 +726,10 @@ function closeNewTaskDialog() {
 function setupNewTaskDialog() {
   const overlay = document.getElementById('newtask-overlay');
   const titleInput = document.getElementById('newtask-title');
-  const timeInput = document.getElementById('newtask-time');
   titleInput.maxLength = TITLE_MAX_LENGTH;
+
+  newTaskTime = createTimeField({ value: DEFAULT_DUE_TIME });
+  document.getElementById('newtask-time').appendChild(newTaskTime.el);
 
   document.getElementById('newtask-modal').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -740,7 +743,7 @@ function setupNewTaskDialog() {
     state.todo.push({
       id: uid(),
       text,
-      due: `${newTaskDay}T${timeInput.value || '09:00'}`,
+      due: `${newTaskDay}T${newTaskTime.getValue()}`,
       importance: 'Not Set',
       showCountdown: true,
       collapsed: false,
@@ -887,6 +890,9 @@ async function init() {
 }
 
 function render() {
+  // The cards are about to be replaced, and the picker belongs to one of them.
+  closeDatePicker();
+
   for (const status of STATUSES) {
     const list = document.getElementById(`list-${status}`);
     list.innerHTML = '';
@@ -1087,6 +1093,571 @@ function appendTaskDetails(li, task) {
   }
 }
 
+/* ------------------------------------------------------------- date picker */
+
+// The browser's own date and time pickers cannot be themed past light or dark,
+// and on a card the date field was squeezed down to nothing but its icon. These
+// are built from the same variables as everything else, so they follow whichever
+// theme is on. A due value is still the "YYYY-MM-DDTHH:MM" string the native
+// field produced, so nothing that reads one has to change.
+
+const DEFAULT_DUE_TIME = '09:00';
+// The times people most often mean, one tap away.
+const TIME_PRESETS = ['09:00', '12:00', '17:00', '21:00'];
+const USE_12H =
+  new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 === true;
+const DAY_PICKER_ROWS = 6;
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function parseTimeValue(value) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(value || '');
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  return hour <= 23 && minute <= 59 ? { hour, minute } : null;
+}
+
+function parseDueValue(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value || '');
+  if (!match) return null;
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]) - 1,
+    day: Number(match[3]),
+    hour: Number(match[4]),
+    minute: Number(match[5]),
+  };
+}
+
+// "Oct 6, 5:00 PM" - the year only when it is not this one, so the label still
+// fits in a card's width.
+function formatDueShort(due) {
+  const date = new Date(due);
+  if (Number.isNaN(date.getTime())) return '';
+  const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  if (date.getFullYear() !== new Date().getFullYear()) options.year = 'numeric';
+  return date.toLocaleString(undefined, options);
+}
+
+function formatPresetTime(time) {
+  const { hour, minute } = parseTimeValue(time);
+  const options = USE_12H
+    ? { hour: 'numeric', minute: minute ? '2-digit' : undefined }
+    : { hour: '2-digit', minute: '2-digit' };
+  return new Date(2000, 0, 1, hour, minute).toLocaleTimeString(undefined, options);
+}
+
+function addMonths(date, delta) {
+  const target = new Date(date.getFullYear(), date.getMonth() + delta, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(date.getDate(), lastDay));
+  return target;
+}
+
+// Hour and minute fields you can type into, step with the arrow keys or the
+// wheel, or skip past with a preset. Used on its own in the new-task dialog and
+// under the month grid in the date picker.
+function createTimeField({ value = DEFAULT_DUE_TIME, onChange = () => {} } = {}) {
+  let { hour, minute } = parseTimeValue(value) || parseTimeValue(DEFAULT_DUE_TIME);
+
+  const root = document.createElement('div');
+  root.className = 'time-field';
+
+  const box = document.createElement('div');
+  box.className = 'time-box';
+  box.setAttribute('role', 'group');
+  box.setAttribute('aria-label', 'Time');
+
+  const makePart = (className, label) => {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = `time-part ${className}`;
+    input.inputMode = 'numeric';
+    input.maxLength = 2;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', label);
+    input.addEventListener('focus', () => input.select());
+    // The click that focuses the field would otherwise drop the selection again.
+    input.addEventListener('mouseup', (e) => e.preventDefault());
+    return input;
+  };
+
+  const hourInput = makePart('time-hour', 'Hour');
+  const minuteInput = makePart('time-minute', 'Minute');
+  const separator = document.createElement('span');
+  separator.className = 'time-sep';
+  separator.textContent = ':';
+
+  box.appendChild(hourInput);
+  box.appendChild(separator);
+  box.appendChild(minuteInput);
+
+  const getValue = () => `${pad2(hour)}:${pad2(minute)}`;
+  const ampmButtons = [];
+  const presetButtons = [];
+
+  const show = () => {
+    hourInput.value = USE_12H ? String(hour % 12 || 12) : pad2(hour);
+    minuteInput.value = pad2(minute);
+    for (const { button, pm } of ampmButtons) {
+      button.setAttribute('aria-pressed', String(pm === hour >= 12));
+    }
+    for (const { button, time } of presetButtons) {
+      button.classList.toggle('is-active', time === getValue());
+    }
+  };
+
+  // Only a real change is reported, so tabbing through the fields leaves a card
+  // with no due date without one.
+  const update = (nextHour, nextMinute) => {
+    if (nextHour === hour && nextMinute === minute) {
+      show();
+      return;
+    }
+    hour = nextHour;
+    minute = nextMinute;
+    show();
+    onChange(getValue());
+  };
+
+  const commitHour = () => {
+    const n = parseInt(hourInput.value, 10);
+    if (Number.isNaN(n) || n < 0 || n > 23) {
+      show();
+      return;
+    }
+    // On a 12-hour clock 1-12 keep the current AM or PM, and 13-23 are taken as
+    // typed, so "17" lands on 5 PM instead of being refused.
+    update(USE_12H && n <= 12 ? (n % 12) + (hour >= 12 ? 12 : 0) : n, minute);
+  };
+
+  const commitMinute = () => {
+    const n = parseInt(minuteInput.value, 10);
+    if (Number.isNaN(n) || n < 0 || n > 59) {
+      show();
+      return;
+    }
+    update(hour, n);
+  };
+
+  const stepHour = (delta) => update((hour + delta + 24) % 24, minute);
+  const stepMinute = (delta) => update(hour, (minute + delta + 60) % 60);
+
+  // A digit that cannot start a valid number is as good as a full one, so the
+  // field moves on without waiting for a second keystroke.
+  hourInput.addEventListener('input', () => {
+    hourInput.value = hourInput.value.replace(/\D/g, '');
+    const n = parseInt(hourInput.value, 10);
+    if (hourInput.value.length === 2 || n >= (USE_12H ? 2 : 3)) {
+      commitHour();
+      minuteInput.focus();
+    }
+  });
+  minuteInput.addEventListener('input', () => {
+    minuteInput.value = minuteInput.value.replace(/\D/g, '');
+    const n = parseInt(minuteInput.value, 10);
+    if (minuteInput.value.length === 2 || n >= 6) commitMinute();
+  });
+
+  const onPartKeyDown = (input, commit, step) => (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const size = e.shiftKey && input === minuteInput ? 15 : 1;
+      step(e.key === 'ArrowUp' ? size : -size);
+    } else if (e.key === 'Enter') {
+      // Not stopped: inside a form this still submits it, now with the typed value.
+      commit();
+    } else if (e.key === ':' && input === hourInput) {
+      e.preventDefault();
+      commitHour();
+      minuteInput.focus();
+    }
+  };
+  hourInput.addEventListener('keydown', onPartKeyDown(hourInput, commitHour, stepHour));
+  minuteInput.addEventListener('keydown', onPartKeyDown(minuteInput, commitMinute, stepMinute));
+  hourInput.addEventListener('blur', commitHour);
+  minuteInput.addEventListener('blur', commitMinute);
+
+  // Only while the field has focus, so scrolling past it never changes a time.
+  for (const [input, step] of [[hourInput, stepHour], [minuteInput, stepMinute]]) {
+    input.addEventListener(
+      'wheel',
+      (e) => {
+        if (document.activeElement !== input) return;
+        e.preventDefault();
+        step(e.deltaY < 0 ? 1 : -1);
+      },
+      { passive: false }
+    );
+  }
+
+  if (USE_12H) {
+    const ampm = document.createElement('div');
+    ampm.className = 'time-ampm';
+    ampm.setAttribute('role', 'group');
+    ampm.setAttribute('aria-label', 'AM or PM');
+    for (const [label, pm] of [['AM', false], ['PM', true]]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.addEventListener('click', () => update((hour % 12) + (pm ? 12 : 0), minute));
+      ampm.appendChild(button);
+      ampmButtons.push({ button, pm });
+    }
+    box.appendChild(ampm);
+  }
+
+  const presets = document.createElement('div');
+  presets.className = 'time-presets';
+  for (const time of TIME_PRESETS) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'time-preset';
+    button.textContent = formatPresetTime(time);
+    button.addEventListener('click', () => {
+      const preset = parseTimeValue(time);
+      update(preset.hour, preset.minute);
+    });
+    presets.appendChild(button);
+    presetButtons.push({ button, time });
+  }
+
+  root.appendChild(box);
+  root.appendChild(presets);
+  show();
+
+  return {
+    el: root,
+    getValue,
+    // Shows a value without reporting it, for when the owner is the one setting it.
+    setValue(next) {
+      const parsed = parseTimeValue(next) || parseTimeValue(DEFAULT_DUE_TIME);
+      hour = parsed.hour;
+      minute = parsed.minute;
+      show();
+    },
+  };
+}
+
+// What sits in the editor in place of the native field: a button showing the due
+// date that opens the picker. Removing the date is the picker's Clear button, so
+// the field keeps all of a narrow card's width for the date itself.
+function createDueField({ value, onChange }) {
+  let current = value || null;
+
+  const root = document.createElement('div');
+  root.className = 'due-field';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'due-trigger';
+  trigger.setAttribute('aria-haspopup', 'dialog');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  const icon = document.createElement('span');
+  icon.className = 'due-icon';
+  icon.innerHTML = CALENDAR_ICON;
+  const label = document.createElement('span');
+  label.className = 'due-label';
+  trigger.appendChild(icon);
+  trigger.appendChild(label);
+
+  const sync = () => {
+    const text = current ? formatDueShort(current) : '';
+    label.textContent = text || 'Set due date';
+    // The short form drops the year, so the full date is a hover away.
+    trigger.title = text ? formatDue(current) : 'Choose a due date and time';
+    root.classList.toggle('is-empty', !text);
+  };
+
+  const set = (next) => {
+    current = next;
+    sync();
+    onChange(next);
+  };
+
+  trigger.addEventListener('click', () => {
+    if (activePicker && activePicker.trigger === trigger) closeDatePicker();
+    else openDatePicker(trigger, () => current, set);
+  });
+
+  root.appendChild(trigger);
+  sync();
+  return root;
+}
+
+// One picker at a time, and it belongs to the card it was opened from.
+let activePicker = null;
+
+function closeDatePicker(refocus = false) {
+  if (!activePicker) return;
+  const { pop, trigger, cleanup } = activePicker;
+  activePicker = null;
+  cleanup();
+  pop.remove();
+  trigger.setAttribute('aria-expanded', 'false');
+  const field = trigger.closest('.due-field');
+  if (field) field.classList.remove('is-open');
+  if (refocus && trigger.isConnected) trigger.focus();
+}
+
+// Fixed to the window rather than the card: the stack a card sits in scrolls and
+// clips, which would cut a popover off at the column's edge.
+function placeDatePicker(pop, anchor) {
+  const margin = 8;
+  const gap = 4;
+  const viewWidth = document.documentElement.clientWidth;
+  const viewHeight = document.documentElement.clientHeight;
+  pop.style.maxHeight = `${viewHeight - margin * 2}px`;
+
+  const rect = anchor.getBoundingClientRect();
+  const width = pop.offsetWidth;
+  const height = pop.offsetHeight;
+
+  // Below the field if it fits, above it if that fits, and failing both beside it,
+  // so the date being picked stays in view rather than being covered by the picker.
+  let left = Math.min(Math.max(margin, rect.left), viewWidth - width - margin);
+  let top = rect.bottom + gap;
+  if (top + height > viewHeight - margin) {
+    const above = rect.top - gap - height;
+    if (above >= margin) {
+      top = above;
+    } else {
+      const toRight = rect.right + gap;
+      const toLeft = rect.left - gap - width;
+      if (toRight + width <= viewWidth - margin) left = toRight;
+      else if (toLeft >= margin) left = toLeft;
+      top = Math.max(margin, Math.min(rect.top, viewHeight - margin - height));
+    }
+  }
+
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+}
+
+function openDatePicker(trigger, getValue, setValue) {
+  closeDatePicker();
+
+  const parsed = parseDueValue(getValue());
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // The day the keyboard is on, which is not always the day that is chosen.
+  let focusDate = parsed ? new Date(parsed.year, parsed.month, parsed.day) : today;
+  let viewMonth = startOfMonth(focusDate);
+
+  const selectedKey = () => {
+    const value = parseDueValue(getValue());
+    return value ? dateKey(new Date(value.year, value.month, value.day)) : null;
+  };
+
+  const timeField = createTimeField({
+    value: parsed ? `${pad2(parsed.hour)}:${pad2(parsed.minute)}` : DEFAULT_DUE_TIME,
+    onChange: (time) => {
+      // Setting a time before a day means today.
+      setValue(`${selectedKey() || dateKey(today)}T${time}`);
+      renderGrid();
+    },
+  });
+
+  const pop = document.createElement('div');
+  pop.className = 'dt-popover';
+  pop.tabIndex = -1;
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Choose a due date and time');
+
+  const head = document.createElement('div');
+  head.className = 'dt-head';
+  const makeNav = (text, title, delta) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dt-nav';
+    button.textContent = text;
+    button.title = title;
+    button.setAttribute('aria-label', title);
+    button.addEventListener('click', () => {
+      focusDate = addMonths(focusDate, delta);
+      viewMonth = startOfMonth(focusDate);
+      renderGrid();
+    });
+    return button;
+  };
+  const title = document.createElement('div');
+  title.className = 'dt-month';
+  title.setAttribute('aria-live', 'polite');
+  head.appendChild(makeNav('‹', 'Previous month', -1));
+  head.appendChild(title);
+  head.appendChild(makeNav('›', 'Next month', 1));
+
+  const weekdays = document.createElement('div');
+  weekdays.className = 'dt-weekdays';
+  const weekStart = firstDayOfWeek();
+  for (let i = 0; i < 7; i++) {
+    // 7 Jan 2024 was a Sunday.
+    const label = document.createElement('div');
+    label.textContent = new Date(2024, 0, 7 + weekStart + i).toLocaleDateString(undefined, {
+      weekday: 'short',
+    });
+    weekdays.appendChild(label);
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'dt-grid';
+  grid.setAttribute('role', 'grid');
+
+  const pick = (day) => {
+    focusDate = day;
+    viewMonth = startOfMonth(day);
+    setValue(`${dateKey(day)}T${timeField.getValue()}`);
+    renderGrid(true);
+  };
+
+  function renderGrid(keepFocus = false) {
+    const hadFocus = keepFocus || grid.contains(document.activeElement);
+    title.textContent = viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    const selected = selectedKey();
+    const todayKey = dateKey(today);
+    const focusKey = dateKey(focusDate);
+    const offset = (viewMonth.getDay() - weekStart + 7) % 7;
+
+    grid.innerHTML = '';
+    for (let i = 0; i < DAY_PICKER_ROWS * 7; i++) {
+      const day = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1 - offset + i);
+      const key = dateKey(day);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'dt-day';
+      button.textContent = day.getDate();
+      button.dataset.key = key;
+      button.tabIndex = key === focusKey ? 0 : -1;
+      button.setAttribute(
+        'aria-label',
+        day.toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      );
+      button.setAttribute('aria-pressed', String(key === selected));
+      if (day.getMonth() !== viewMonth.getMonth()) button.classList.add('other-month');
+      if (key === todayKey) button.classList.add('today');
+      if (key === selected) button.classList.add('selected');
+      button.addEventListener('click', () => pick(day));
+      grid.appendChild(button);
+    }
+
+    if (hadFocus) {
+      const target = grid.querySelector(`[data-key="${focusKey}"]`);
+      if (target) target.focus({ preventScroll: true });
+    }
+  }
+
+  // Arrows move by a day or a week, Page Up and Down by a month (a year with
+  // Shift), and Enter or Space chooses the day the keyboard is on.
+  grid.addEventListener('keydown', (e) => {
+    const days = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+    let next = null;
+    if (days) {
+      next = new Date(focusDate.getFullYear(), focusDate.getMonth(), focusDate.getDate() + days);
+    } else if (e.key === 'PageUp' || e.key === 'PageDown') {
+      next = addMonths(focusDate, (e.key === 'PageUp' ? -1 : 1) * (e.shiftKey ? 12 : 1));
+    }
+    if (!next) return;
+    e.preventDefault();
+    focusDate = next;
+    viewMonth = startOfMonth(next);
+    renderGrid(true);
+  });
+
+  const foot = document.createElement('div');
+  foot.className = 'dt-foot';
+  const makeFootButton = (text, className, onClick) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `dt-btn ${className}`;
+    button.textContent = text;
+    button.addEventListener('click', onClick);
+    foot.appendChild(button);
+    return button;
+  };
+  makeFootButton('Clear', 'dt-clear', () => {
+    setValue(null);
+    closeDatePicker(true);
+  });
+  makeFootButton('Today', 'dt-today', () => pick(today));
+  makeFootButton('Done', 'dt-done', () => closeDatePicker(true));
+
+  pop.appendChild(head);
+  pop.appendChild(weekdays);
+  pop.appendChild(grid);
+  pop.appendChild(timeField.el);
+  pop.appendChild(foot);
+
+  const onPointerDown = (e) => {
+    if (!pop.contains(e.target) && !trigger.contains(e.target)) closeDatePicker();
+  };
+  // Captured so that Escape closes only the picker: on a card the title field
+  // would otherwise take the same keypress as "cancel the whole edit".
+  const onKeyDown = (e) => {
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeDatePicker(true);
+  };
+  // It is fixed in place, so it would be left hanging if what it points at moved.
+  // Only scrolling that carries the field counts: a text box scrolling its own
+  // contents, the picker's, or another column's, leaves it where it was. (The
+  // page itself never scrolls - the window is exactly as tall as the board.)
+  const onScroll = (e) => {
+    const scrolled = e.target;
+    if (scrolled.nodeType === 1 && scrolled.contains(trigger)) closeDatePicker();
+  };
+  // A different width is a different layout, so the picker is closed; a different
+  // height is usually just a phone's on-screen keyboard opening for the time
+  // fields, so it only moves to stay on screen.
+  const openedWidth = window.innerWidth;
+  const onResize = () => {
+    if (window.innerWidth !== openedWidth) closeDatePicker();
+    else placeDatePicker(pop, trigger);
+  };
+  const onFocusOut = (e) => {
+    const next = e.relatedTarget;
+    if (next && !pop.contains(next) && !trigger.contains(next)) closeDatePicker();
+  };
+
+  document.addEventListener('pointerdown', onPointerDown, true);
+  document.addEventListener('keydown', onKeyDown, true);
+  window.addEventListener('scroll', onScroll, true);
+  window.addEventListener('resize', onResize);
+  pop.addEventListener('focusout', onFocusOut);
+
+  activePicker = {
+    pop,
+    trigger,
+    cleanup() {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    },
+  };
+
+  trigger.setAttribute('aria-expanded', 'true');
+  const field = trigger.closest('.due-field');
+  if (field) field.classList.add('is-open');
+
+  renderGrid();
+  document.body.appendChild(pop);
+  placeDatePicker(pop, trigger);
+  const start = grid.querySelector(`[data-key="${dateKey(focusDate)}"]`);
+  if (start) start.focus({ preventScroll: true });
+}
+
 function renderEditRow(task) {
   const draft = editDraft;
   const row = document.createElement('div');
@@ -1095,15 +1666,14 @@ function renderEditRow(task) {
   const topRow = document.createElement('div');
   topRow.className = 'card-edit-top';
 
-  const dueInput = document.createElement('input');
-  dueInput.type = 'datetime-local';
-  dueInput.className = 'due-input';
-  dueInput.value = draft.due || '';
-  dueInput.addEventListener('change', () => {
-    draft.due = dueInput.value || null;
-    syncCountdownToggle();
-    // The reminder is measured back from this date, so it follows it.
-    syncRemindRow();
+  const dueField = createDueField({
+    value: draft.due,
+    onChange: (due) => {
+      draft.due = due;
+      syncCountdownToggle();
+      // The reminder is measured back from this date, so it follows it.
+      syncRemindRow();
+    },
   });
 
   const importanceSelect = document.createElement('select');
@@ -1119,7 +1689,7 @@ function renderEditRow(task) {
     draft.importance = importanceSelect.value;
   });
 
-  topRow.appendChild(dueInput);
+  topRow.appendChild(dueField);
   topRow.appendChild(importanceSelect);
 
   // Sits under the date because that is what it qualifies: with it off the card
