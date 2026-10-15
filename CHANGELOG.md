@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1 - 2026-10-15
+
+- Fixed the theme previews in the settings menu running over the edges of their tiles: a preview now sits inside the hover and selected highlight instead of spilling past it
+
 ## 1.6.0 - 2026-10-15
 
 - Clicking a day on the calendar now opens that day's tasks in the side panel in place of Upcoming, instead of the new-task dialog: each task shows its full title, time, column, countdown, reminder, description and importance, and can be folded down to its title. The Add task button in the panel starts a new task due on that day. The back arrow, Escape, or clicking the day again returns to Upcoming

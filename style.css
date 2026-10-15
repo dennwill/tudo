@@ -1003,7 +1003,10 @@ body {
   flex-direction: column;
   width: 276px;
   height: 168px;
-  zoom: 0.3333;
+  /* 276px * 0.3043 = 84px: the width left inside a tile (92px less its 3px
+     padding and 1px border on each side), so the picture sits inside the hover
+     and selected highlight instead of running over it. */
+  zoom: 0.3043;
   overflow: hidden;
   border: var(--border-w) solid var(--border);
   border-radius: var(--radius-lg);
