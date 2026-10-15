@@ -1,4 +1,8 @@
-:root {
+/* The same variables serve the theme previews in Settings: a preview is an
+   element with its own data-theme, so it picks up that theme's block, and starts
+   from these defaults rather than from whatever theme the page is in. */
+:root,
+.theme-preview {
   /* Dark Minimalist (default) */
   --bg: #0b0c0e;
   --card-bg: rgba(22, 24, 29, 0.7);
@@ -26,6 +30,11 @@
   --surface: rgba(16, 18, 22, 0.4);
   --surface-blur: blur(16px);
   --bg-image: radial-gradient(circle at 50% -20%, var(--accent-glow), transparent 70%);
+  /* How --bg-image is laid out. A theme with several layers or a tiling pattern
+     gives one value per layer. */
+  --bg-repeat: repeat;
+  --bg-position: 0 0;
+  --bg-size: auto;
 
   --card-shadow: none;
   --card-shadow-hover: none;
@@ -56,7 +65,7 @@
 }
 
 /* ---------- Light Minimalist ---------- */
-html[data-theme="light-minimalist"] {
+[data-theme="light-minimalist"] {
   --bg: #f5f6f8;
   --card-bg: rgba(255, 255, 255, 0.8);
   --card-hover: rgba(255, 255, 255, 0.98);
@@ -86,7 +95,7 @@ html[data-theme="light-minimalist"] {
 }
 
 /* ---------- Neo-Brutalism ---------- */
-html[data-theme="neo-brutalism"] {
+[data-theme="neo-brutalism"] {
   --bg: #f4f1e8;
   --card-bg: #ffffff;
   --card-hover: #ffffff;
@@ -128,8 +137,398 @@ html[data-theme="neo-brutalism"] {
   --scrollbar-thumb: #000000;
 }
 
+/* ---------- Notebook ---------- */
+/* Cream paper with faint blue ruled lines, blue-black ink and pencil-grey
+   borders. Cards are slips of paper: soft shadows, small corners, and a slight
+   tilt when lifted. The body font stays whatever the Font list says; only the
+   colours and the surfaces are the theme's. */
+[data-theme="notebook"] {
+  --bg: #f4eedb;
+  --card-bg: #fffef8;
+  --card-hover: #ffffff;
+  --border: rgba(70, 58, 32, 0.22);
+  --border-focus: rgba(47, 85, 164, 0.6);
+  --text: #26252e;
+  --text-muted: #70695a;
+  --accent: #2f55a4;
+  --accent-glow: rgba(47, 85, 164, 0.13);
+
+  --font-mono: 'Courier New', monospace;
+  --heading-transform: none;
+  --heading-tracking: 0;
+
+  --radius-lg: 6px;
+  --radius-md: 5px;
+  --radius-sm: 4px;
+  --radius-xs: 3px;
+
+  --border-w: 1px;
+  /* Paper over paper: translucent enough that the ruling shows through. */
+  --surface: rgba(255, 253, 243, 0.72);
+  --surface-blur: none;
+  --bg-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    rgba(92, 132, 190, 0.26) 27px,
+    rgba(92, 132, 190, 0.26) 28px
+  );
+
+  --card-shadow: 0 1px 2px rgba(80, 60, 20, 0.14), 0 3px 8px rgba(80, 60, 20, 0.08);
+  --card-shadow-hover: 0 8px 18px rgba(80, 60, 20, 0.18);
+  --card-hover-transform: translateY(-2px) rotate(-0.35deg);
+
+  --btn-bg: rgba(70, 58, 32, 0.06);
+  --btn-bg-hover: rgba(47, 85, 164, 0.12);
+  --btn-bevel: inset 0 -1px 0 rgba(70, 58, 32, 0.12);
+
+  --overlay-bg: rgba(70, 58, 32, 0.4);
+  --footer-bg: rgba(70, 58, 32, 0.05);
+  --toolbar-bg: rgba(70, 58, 32, 0.04);
+  --modal-bg: #fffdf4;
+  --modal-shadow: 0 14px 34px rgba(60, 45, 15, 0.28);
+  --color-scheme: light;
+  --titlebar-bg: #ece4cc;
+  --scrollbar-thumb: rgba(70, 58, 32, 0.28);
+
+  /* Red pen for late work, blue ink where the accent has to be read. */
+  --danger: #b3261e;
+  --danger-rgb: 179, 38, 30;
+  --accent-text: #2f55a4;
+}
+
+/* ---------- Terminal ---------- */
+/* A phosphor-green screen: near-black glass with faint scanlines, square
+   corners, and a glow in place of shadows. The body font is still the Font list's
+   to decide; the headings, labels and dates below are set in monospace to carry
+   the look on their own. */
+[data-theme="terminal"] {
+  --bg: #050805;
+  --card-bg: rgba(10, 18, 11, 0.92);
+  --card-hover: rgba(16, 30, 18, 0.96);
+  --border: rgba(57, 255, 106, 0.22);
+  --border-focus: rgba(57, 255, 106, 0.7);
+  --text: #a6f7b9;
+  --text-muted: #5aa56d;
+  --accent: #39ff6a;
+  --accent-glow: rgba(57, 255, 106, 0.13);
+
+  --font-mono: 'JetBrains Mono', monospace;
+  --heading-transform: lowercase;
+  --heading-tracking: 0.02em;
+
+  --radius-lg: 0px;
+  --radius-md: 0px;
+  --radius-sm: 0px;
+  --radius-xs: 0px;
+
+  --border-w: 1px;
+  --surface: rgba(6, 12, 7, 0.78);
+  --surface-blur: none;
+  --bg-image:
+    radial-gradient(ellipse at 50% -10%, rgba(57, 255, 106, 0.1), transparent 65%),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      rgba(0, 0, 0, 0.28) 2px,
+      rgba(0, 0, 0, 0.28) 3px
+    );
+
+  --card-shadow: none;
+  --card-shadow-hover: 0 0 14px rgba(57, 255, 106, 0.22);
+  --card-hover-transform: none;
+
+  --btn-bg: rgba(57, 255, 106, 0.06);
+  --btn-bg-hover: rgba(57, 255, 106, 0.16);
+  --btn-bevel: none;
+
+  --overlay-bg: rgba(0, 0, 0, 0.72);
+  --footer-bg: rgba(57, 255, 106, 0.04);
+  --toolbar-bg: rgba(57, 255, 106, 0.03);
+  --modal-bg: #0a110b;
+  --modal-shadow: 0 0 0 1px rgba(57, 255, 106, 0.3), 0 14px 36px rgba(0, 0, 0, 0.7);
+  --color-scheme: dark;
+  --titlebar-bg: #080d09;
+  --scrollbar-thumb: rgba(57, 255, 106, 0.3);
+
+  --danger: #ff6b6b;
+  --danger-rgb: 255, 107, 107;
+  --accent-text: #39ff6a;
+  /* Coloured labels glow like the rest of the screen. */
+  --colored-text-shadow: 0 0 6px rgba(57, 255, 106, 0.35);
+}
+
+html[data-theme="terminal"] #titlebar h1,
+html[data-theme="terminal"] .col-title,
+html[data-theme="terminal"] .settings-heading,
+html[data-theme="terminal"] .upcoming-title,
+html[data-theme="terminal"] .up-group-label,
+html[data-theme="terminal"] .cal-month,
+html[data-theme="terminal"] .cal-weekday {
+  font-family: var(--font-mono);
+}
+
+/* Bright green fills, so the white text the other themes put on them would
+   vanish; dark text instead. */
+html[data-theme="terminal"] .update-btn:hover,
+html[data-theme="terminal"] .dt-day.selected,
+html[data-theme="terminal"] .time-ampm button[aria-pressed="true"],
+html[data-theme="terminal"] .dt-done:hover,
+html[data-theme="terminal"] .card-edit-save:hover {
+  color: #04140a;
+}
+
+/* ---------- Butter ---------- */
+/* Butter yellow and cream with cocoa-brown ink, polka dots on the page, and
+   round, chunky shapes with a squashed-down shadow under everything, like a soft
+   toy. Cards bounce up a little when pointed at. */
+[data-theme="butter"] {
+  --bg: #ffeea0;
+  --card-bg: #fffbe3;
+  --card-hover: #ffffff;
+  --border: rgba(133, 88, 20, 0.42);
+  --border-focus: #e39a00;
+  --text: #4a3416;
+  --text-muted: #86652f;
+  --accent: #f5a300;
+  --accent-glow: rgba(245, 163, 0, 0.24);
+
+  --heading-transform: none;
+  --heading-tracking: 0;
+
+  --radius-lg: 22px;
+  --radius-md: 18px;
+  --radius-sm: 13px;
+  --radius-xs: 9px;
+
+  --border-w: 2px;
+  --surface: rgba(255, 249, 214, 0.78);
+  --surface-blur: none;
+  --bg-image:
+    radial-gradient(circle at 9px 9px, rgba(255, 196, 40, 0.38) 5px, transparent 5.5px),
+    radial-gradient(circle at 27px 27px, rgba(255, 196, 40, 0.38) 5px, transparent 5.5px);
+  /* Both dots sit in one 36px tile, which repeats. */
+  --bg-size: 36px 36px;
+
+  --card-shadow: 0 4px 0 rgba(214, 150, 20, 0.5);
+  --card-shadow-hover: 0 7px 0 rgba(214, 150, 20, 0.5);
+  --card-hover-transform: translateY(-3px) scale(1.012);
+
+  --btn-bg: #fff2bd;
+  --btn-bg-hover: #ffdf6b;
+  --btn-bevel: inset 0 -3px 0 rgba(214, 150, 20, 0.4);
+
+  --overlay-bg: rgba(110, 72, 12, 0.42);
+  --footer-bg: rgba(255, 196, 40, 0.2);
+  --toolbar-bg: rgba(255, 196, 40, 0.15);
+  --modal-bg: #fffbe6;
+  --modal-shadow: 0 6px 0 rgba(214, 150, 20, 0.6), 0 18px 32px rgba(110, 72, 12, 0.25);
+  --color-scheme: light;
+  --titlebar-bg: #ffd84a;
+  --scrollbar-thumb: #e8b84a;
+
+  --danger: #c42a30;
+  --danger-rgb: 196, 42, 48;
+  /* The accent as writing has to be darker than the accent as a fill. */
+  --accent-text: #a05a00;
+}
+
+/* Golden fills, so white text would wash out; cocoa instead. */
+html[data-theme="butter"] .update-btn:hover,
+html[data-theme="butter"] .dt-day.selected,
+html[data-theme="butter"] .time-ampm button[aria-pressed="true"],
+html[data-theme="butter"] .dt-done:hover,
+html[data-theme="butter"] .card-edit-save:hover {
+  color: #4a3416;
+}
+
+/* ---------- Night Watch ---------- */
+/* A night camp: a starry sky with a faint Milky Way, an ember glow on the horizon,
+   a pine forest along the bottom with a keep on a far hill, and steel, starlight
+   and firelight for the colours. Headings are small, spaced capitals in a serif;
+   the body font is still the Font list's to decide. */
+[data-theme="night-watch"] {
+  --bg: #070b18;
+  --card-bg: rgba(14, 20, 36, 0.88);
+  --card-hover: rgba(23, 32, 55, 0.95);
+  --border: rgba(150, 170, 210, 0.2);
+  --border-focus: rgba(255, 176, 90, 0.7);
+  --text: #e4e9f3;
+  --text-muted: #8f9ab2;
+  --accent: #f2a14a;
+  --accent-glow: rgba(242, 161, 74, 0.16);
+
+  --heading-transform: uppercase;
+  --heading-tracking: 0.08em;
+
+  --radius-lg: 6px;
+  --radius-md: 4px;
+  --radius-sm: 3px;
+  --radius-xs: 2px;
+
+  --border-w: 1px;
+  --surface: rgba(9, 14, 28, 0.55);
+  --surface-blur: none;
+  /* The scene, in layers from the front: the forest along the bottom, a scatter of
+     stars in two sizes, the Milky Way as a pale diagonal band, the glow of a fire
+     below the horizon, and the sky itself. It sits under the panels, so it shows
+     in the gaps and through their translucent fill - a backdrop, not a picture. */
+  --bg-image:
+    url("assets/night-watch/forest.svg"),
+    radial-gradient(1.2px 1.2px at 40px 60px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 150px 120px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.4px 1.4px at 90px 200px, rgba(255, 244, 220, 0.85), transparent),
+    radial-gradient(1px 1px at 60px 40px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.2px 1.2px at 210px 170px, rgba(220, 232, 255, 0.85), transparent),
+    radial-gradient(1px 1px at 260px 80px, rgba(255, 255, 255, 0.6), transparent),
+    linear-gradient(115deg, transparent 36%, rgba(150, 180, 255, 0.07) 45%, rgba(190, 210, 255, 0.14) 50%, rgba(150, 180, 255, 0.07) 55%, transparent 64%),
+    radial-gradient(ellipse at 50% 112%, rgba(232, 120, 56, 0.5), rgba(190, 80, 40, 0.2) 36%, transparent 68%),
+    linear-gradient(180deg, #060b1a 0%, #0d1730 55%, #1a2038 82%, #2a2030 100%);
+  --bg-repeat:
+    repeat-x,
+    repeat, repeat, repeat,
+    repeat, repeat, repeat,
+    no-repeat, no-repeat, no-repeat;
+  --bg-position:
+    left bottom,
+    0 0, 0 0, 0 0,
+    0 0, 0 0, 0 0,
+    0 0, 0 0, 0 0;
+  --bg-size:
+    auto 200px,
+    230px 230px, 230px 230px, 230px 230px,
+    300px 300px, 300px 300px, 300px 300px,
+    auto, auto, auto;
+
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 14px rgba(0, 0, 0, 0.5);
+  /* Firelight spilling onto a card that is lifted. */
+  --card-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 20px rgba(242, 140, 60, 0.22), 0 8px 20px rgba(0, 0, 0, 0.6);
+  --card-hover-transform: translateY(-1px);
+
+  --btn-bg: rgba(150, 170, 210, 0.08);
+  --btn-bg-hover: rgba(242, 161, 74, 0.17);
+  --btn-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --overlay-bg: rgba(3, 5, 12, 0.76);
+  --footer-bg: rgba(150, 170, 210, 0.05);
+  --toolbar-bg: rgba(150, 170, 210, 0.04);
+  --modal-bg: #0f1628;
+  --modal-shadow: 0 0 0 1px rgba(150, 170, 210, 0.28), 0 18px 44px rgba(0, 0, 0, 0.8);
+  --color-scheme: dark;
+  --titlebar-bg: linear-gradient(180deg, rgba(16, 24, 44, 0.96), rgba(8, 12, 24, 0.92));
+  --scrollbar-thumb: rgba(150, 170, 210, 0.3);
+
+  /* Red as embers, lifted enough to be read on a dark blue. */
+  --danger: #ff7561;
+  --danger-rgb: 255, 117, 97;
+  --accent-text: #ffb866;
+  --colored-text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+html[data-theme="night-watch"] #titlebar h1,
+html[data-theme="night-watch"] .col-title,
+html[data-theme="night-watch"] .settings-heading,
+html[data-theme="night-watch"] .upcoming-title,
+html[data-theme="night-watch"] .cal-month {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+/* Embers drifting up from the fire below the horizon, in two sizes at two speeds.
+   They are drawn behind the panels, so they show in the gaps and through the
+   translucent fill, and fade out towards the top. Each layer's tile is as tall as
+   the distance it travels, so the loop has no seam. */
+html[data-theme="night-watch"] body::before,
+html[data-theme="night-watch"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 85%);
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 85%);
+}
+
+html[data-theme="night-watch"] body::before {
+  background-image:
+    radial-gradient(2px 2px at 40px 90px, rgba(255, 179, 90, 0.95), transparent),
+    radial-gradient(1.6px 1.6px at 170px 240px, rgba(255, 150, 60, 0.85), transparent),
+    radial-gradient(2.2px 2.2px at 260px 40px, rgba(255, 200, 120, 0.9), transparent),
+    radial-gradient(1.6px 1.6px at 110px 330px, rgba(255, 140, 50, 0.8), transparent);
+  background-size: 320px 400px;
+  animation: night-watch-embers 26s linear infinite;
+}
+
+html[data-theme="night-watch"] body::after {
+  background-image:
+    radial-gradient(1.4px 1.4px at 30px 60px, rgba(255, 190, 110, 0.8), transparent),
+    radial-gradient(1.2px 1.2px at 150px 190px, rgba(255, 160, 70, 0.7), transparent),
+    radial-gradient(1.4px 1.4px at 90px 270px, rgba(255, 210, 140, 0.75), transparent);
+  background-size: 210px 300px;
+  animation: night-watch-embers-near 15s linear infinite;
+}
+
+@keyframes night-watch-embers {
+  to { background-position: 0 -400px; }
+}
+
+@keyframes night-watch-embers-near {
+  to { background-position: 0 -300px; }
+}
+
+/* Still embers would only look like more stars. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="night-watch"] body::before,
+  html[data-theme="night-watch"] body::after {
+    display: none;
+  }
+}
+
+/* The fire is below the window, so every panel is lit from underneath: a warm
+   wash up from its bottom edge, and the edge itself catching the light. */
+html[data-theme="night-watch"] .col,
+html[data-theme="night-watch"] .upcoming {
+  border-bottom-color: rgba(242, 161, 74, 0.38);
+  box-shadow: inset 0 -38px 44px -30px rgba(236, 120, 50, 0.16);
+}
+
+/* A knight's helm before the app name, and two knights at a campfire above the
+   side panel when there is nothing in it. Neither takes room from a task. */
+html[data-theme="night-watch"] #titlebar h1::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  margin-right: 7px;
+  vertical-align: -5px;
+  background: url("assets/night-watch/helm.svg") center / contain no-repeat;
+}
+
+html[data-theme="night-watch"] .upcoming-empty {
+  text-align: center;
+}
+
+html[data-theme="night-watch"] .upcoming-empty::before {
+  content: '';
+  display: block;
+  width: 150px;
+  max-width: 100%;
+  height: 94px;
+  margin: 10px auto 6px;
+  background: url("assets/night-watch/camp.svg") center / contain no-repeat;
+}
+
+/* Amber fills, so white text would wash out; near-black instead. */
+html[data-theme="night-watch"] .update-btn:hover,
+html[data-theme="night-watch"] .dt-day.selected,
+html[data-theme="night-watch"] .time-ampm button[aria-pressed="true"],
+html[data-theme="night-watch"] .dt-done:hover,
+html[data-theme="night-watch"] .card-edit-save:hover {
+  color: #1c1006;
+}
+
 /* ---------- Glassmorphism ---------- */
-html[data-theme="glassmorphism"] {
+[data-theme="glassmorphism"] {
   --bg: rgba(24, 22, 48, 0.72);
   --card-bg: rgba(255, 255, 255, 0.12);
   --card-hover: rgba(255, 255, 255, 0.2);
@@ -185,7 +584,7 @@ html[data-theme="glassmorphism"] {
 }
 
 /* ---------- Windows 2000 ---------- */
-html[data-theme="windows-2000"] {
+[data-theme="windows-2000"] {
   --bg: #d4d0c8;
   --card-bg: #ffffff;
   --card-hover: #dceafd;
@@ -251,6 +650,9 @@ body {
   font-family: var(--font-body);
   background-color: var(--bg);
   background-image: var(--bg-image);
+  background-repeat: var(--bg-repeat);
+  background-position: var(--bg-position);
+  background-size: var(--bg-size);
   color: var(--text);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -406,48 +808,34 @@ body {
   background: var(--btn-bg-hover);
 }
 
+/* Only a frame to position the two boxes in: the list of groups, hanging from the
+   gear, and the options of whichever one is pointed at, which open to its right.
+   The options hold their place while hidden, so the list never moves when they
+   fade in. */
 .settings-panel {
   position: absolute;
   top: 26px;
-  right: 0;
+  left: 0;
   z-index: 20;
   display: flex;
-  flex-direction: column;
-  padding: 6px;
-  /* Wide enough for a sync key (XXXXX-XXXXX-XXXXX-XXXXX) on one line. */
-  min-width: 216px;
-  max-width: calc(100vw - 20px);
-  /* Taller than the window once every section is open, so it scrolls rather
-     than running off the bottom. */
-  max-height: calc(100vh - 54px);
-  overflow-y: auto;
-  background: var(--modal-bg);
-  border: var(--border-w) solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--modal-shadow);
+  align-items: flex-start;
+  gap: 6px;
+  /* The empty part of the frame must not swallow clicks meant for the app. */
+  pointer-events: none;
 }
 
 .settings-panel[hidden] {
   display: none;
 }
 
-.settings-panel::-webkit-scrollbar {
-  width: 6px;
-}
-
-.settings-panel::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 3px;
-}
-
-.settings-group[hidden] {
-  display: none;
-}
-
-.settings-group + .settings-group {
-  margin-top: 7px;
-  padding-top: 7px;
-  border-top: var(--border-w) solid var(--border);
+.settings-nav,
+.settings-pages {
+  pointer-events: auto;
+  padding: 6px;
+  background: var(--modal-bg);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--modal-shadow);
 }
 
 .settings-heading {
@@ -458,6 +846,275 @@ body {
   letter-spacing: 0.07em;
   color: var(--text-muted);
   padding: 0 5px 3px;
+}
+
+/* A second heading inside one group, to tell its halves apart. */
+.settings-subheading {
+  margin-top: 6px;
+}
+
+/* The groups, down the left of the panel, under the gear. */
+.settings-nav {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 4px 5px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-size: 11px;
+  font-family: var(--font-body);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-nav-item[hidden] {
+  display: none;
+}
+
+.settings-nav-item:hover,
+.settings-nav-item.active {
+  background: var(--btn-bg-hover);
+}
+
+/* Points right, at the options it opens. */
+.settings-nav-item svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transform: rotate(-90deg);
+}
+
+.settings-nav-item.active svg {
+  color: var(--text);
+}
+
+/* Not there until a group has been pointed at for a moment; then it fades in
+   from the list's side. Hidden, it still holds its place, so nothing moves. */
+.settings-pages {
+  /* Wide enough for a sync key (XXXXX-XXXXX-XXXXX-XXXXX) on one line. */
+  flex: 0 0 auto;
+  width: min(232px, calc(100vw - 150px));
+  /* Taller than the window with the sync controls open, so it scrolls rather
+     than running off the bottom. */
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease, width 0.15s ease, visibility 0s linear 0.15s;
+}
+
+/* Appearance holds the theme previews, three across. */
+.settings-pages.wide {
+  width: min(314px, calc(100vw - 150px));
+}
+
+.settings-pages.open {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-pages {
+    transform: none;
+    transition: none;
+  }
+}
+
+.settings-pages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-pages::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.settings-page[hidden] {
+  display: none;
+}
+
+/* ---------- Theme previews (Settings > Appearance) ---------- */
+
+#theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, 92px);
+  gap: 6px;
+}
+
+.theme-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 3px;
+  border: var(--border-w) solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.theme-tile:hover {
+  background: var(--btn-bg-hover);
+}
+
+.theme-tile:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.theme-tile:has(input:focus-visible) {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+/* The radio is the control, but the picture is what is seen. */
+.theme-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-name {
+  font-size: 9.5px;
+  font-family: var(--font-body);
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text);
+}
+
+/* A small kanban board drawn in the colours of the theme it is tagged with: the
+   theme's own variables, so a preview cannot drift from the theme. It is laid out
+   at roughly the size of the real thing and shrunk, so that borders, shadows and
+   corner radii keep their proportions. Text is bars rather than words. */
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  width: 276px;
+  height: 168px;
+  zoom: 0.3333;
+  overflow: hidden;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg);
+  background-image: var(--bg-image);
+  background-repeat: var(--bg-repeat);
+  background-position: var(--bg-position);
+  background-size: var(--bg-size);
+  color: var(--text);
+}
+
+/* The scene is sized for a whole window; in a preview the forest would fill it,
+   and the panels are made clearer so the scene is what is seen. */
+.theme-preview[data-theme="night-watch"] {
+  --surface: rgba(9, 14, 28, 0.18);
+  --bg-size:
+    auto 84px,
+    230px 230px, 230px 230px, 230px 230px,
+    300px 300px, 300px 300px, 300px 300px,
+    auto, auto, auto;
+}
+
+.tp-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 12px;
+  background: var(--titlebar-bg);
+  border-bottom: var(--border-w) solid var(--border);
+}
+
+.tp-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+}
+
+.tp-line {
+  display: block;
+  height: 7px;
+  width: 80%;
+  border-radius: 4px;
+  background: var(--text);
+  opacity: 0.85;
+}
+
+.tp-bar .tp-line {
+  width: 64px;
+}
+
+/* A title bar that is a dark colour with white writing on it, not the page's. */
+.theme-preview[data-theme="windows-2000"] .tp-bar .tp-line {
+  background: #ffffff;
+}
+
+.tp-body {
+  display: flex;
+  gap: 9px;
+  flex: 1;
+  min-height: 0;
+  padding: 11px;
+}
+
+.tp-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tp-head {
+  height: 6px;
+  width: 55%;
+  border-radius: 3px;
+  background: var(--text-muted);
+}
+
+.tp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--card-shadow);
+}
+
+.tp-card .tp-line {
+  height: 6px;
+}
+
+.tp-card .tp-line.short {
+  width: 50%;
+  background: var(--text-muted);
+}
+
+.tp-pill {
+  display: block;
+  height: 7px;
+  width: 26px;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
 }
 
 .settings-option {
@@ -665,6 +1322,45 @@ body {
   display: none;
 }
 
+/* The handle between the month grid and the side panel. It is a wide target
+   laid over the gap, so the two stay as close as they were; the line only shows
+   when it is pointed at or being dragged. */
+.cal-resizer {
+  flex: 0 0 10px;
+  margin: 0 -10px;
+  position: relative;
+  z-index: 1;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.cal-resizer::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.cal-resizer:hover::after,
+.cal-resizer:focus-visible::after,
+.calendar.resizing .cal-resizer::after {
+  opacity: 0.7;
+}
+
+/* Dragging past the edge of the handle must not select text or flicker the
+   cursor. */
+.calendar.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 .cal-pane {
   flex: 1;
   min-width: 0;
@@ -675,7 +1371,14 @@ body {
 }
 
 .upcoming {
-  flex: 0 0 196px;
+  /* The width is the user's to set (see the handle beside it), and Upcoming and a
+     chosen day share it. A definite width and a floor of its own, so the panel
+     does not stretch to fit its longest title. The cap keeps the month grid from
+     being squeezed out when the window shrinks. */
+  flex: 0 0 auto;
+  width: var(--upcoming-w, 196px);
+  min-width: 150px;
+  max-width: 60%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -698,7 +1401,13 @@ body {
   font-weight: 600;
 }
 
+.upcoming-head {
+  gap: 6px;
+}
+
 .upcoming-title {
+  flex: 1;
+  min-width: 0;
   color: var(--text);
   text-transform: var(--heading-transform);
   letter-spacing: var(--heading-tracking);
@@ -795,6 +1504,116 @@ body {
 
 .upcoming-empty {
   font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* The panel while it belongs to one day. */
+.up-add {
+  flex-shrink: 0;
+  width: 100%;
+  height: 24px;
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+.up-add:hover {
+  border-color: var(--accent);
+}
+
+/* A task on the selected day, laid out like a board card: the title, then its
+   details stacked underneath. */
+.day-task {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--card-bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.day-task.overdue {
+  border-color: rgba(var(--danger-rgb), 0.45);
+}
+
+.day-task-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.day-task-top .card-toggle {
+  margin-top: 0;
+}
+
+/* Pointing down while open, and at the title once folded - as on the board. */
+.day-task.collapsed .card-toggle svg {
+  transform: rotate(-90deg);
+}
+
+.day-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.day-task.collapsed .day-details {
+  display: none;
+}
+
+.day-task-head {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.day-task-head:hover .day-task-title {
+  text-decoration: underline;
+}
+
+.day-task-head .icon-dot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  margin-top: 5px;
+  box-shadow: none;
+}
+
+.day-task-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.up-meta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.day-task.overdue .up-meta {
+  color: var(--danger);
+}
+
+.day-task.done .day-task-title {
+  text-decoration: line-through;
   color: var(--text-muted);
 }
 
@@ -921,6 +1740,13 @@ body {
   background: var(--accent-glow);
 }
 
+/* The day open in the side panel. Today is already outlined, so the ring is what
+   tells the two apart. */
+.cal-day.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 /* A button, so the keyboard can reach it, but dressed as plain text. */
 .cal-date {
   font-family: var(--font-mono);
@@ -1000,10 +1826,27 @@ body {
 
 /* Shrink the window far enough and there is no room for both: seven day columns
    need the width more than the list does, and the list's tasks are all on the
-   grid anyway. */
+   grid anyway. A chosen day still needs somewhere to show, so its panel drops
+   below the grid instead. */
 @media (max-width: 660px) {
-  .upcoming {
+  .cal-resizer {
     display: none;
+  }
+
+  .upcoming:not(.day-mode) {
+    display: none;
+  }
+
+  .calendar.day-open {
+    flex-direction: column;
+  }
+
+  .upcoming.day-mode {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: 45%;
   }
 }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0 - 2026-10-15
+
+- Clicking a day on the calendar now opens that day's tasks in the side panel in place of Upcoming, instead of the new-task dialog: each task shows its full title, time, column, countdown, reminder, description and importance, and can be folded down to its title. The Add task button in the panel starts a new task due on that day. The back arrow, Escape, or clicking the day again returns to Upcoming
+- The side panel's width is now yours to set: drag the divider between the month grid and the panel, or use the arrow keys on it, and double-click it to put it back. The width is remembered
+- The settings gear moved to the left of the titlebar, beside the app name. Its menu is now a short list of groups - Appearance, Columns and Sync - and pointing at one fades its options in beside the list. The menu follows the font you have chosen
+- The theme picker now shows a small preview of the app in each theme, three across, so you can see a theme before choosing it
+- Added four themes: Notebook, Terminal, Butter and Night Watch
+
 ## 1.5.1 - 2026-10-06
 
 - Due dates are now set with a picker that follows the theme, in place of the browser's own: a month grid to choose the day, hour and minute fields you can type into or step with the arrow keys and mouse wheel (with AM/PM on a 12-hour clock), one-tap times for 9, 12, 5 and 9 in the evening, and Today and Clear buttons

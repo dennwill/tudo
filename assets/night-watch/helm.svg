@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-linejoin="round" stroke-linecap="round">
+  <!-- A knight's great helm with an ember-coloured plume, for the Night Watch theme. -->
+  <path d="M16 10 C15 3 23 0 29 5 C24 4 20 6 19 10 Z" fill="#c8702a" stroke="#f2a14a" stroke-width="1"/>
+  <path d="M7 29 V15 Q7 8 16 7.5 Q25 8 25 15 V29 Z" fill="#1a2236" stroke="#9aa6bd" stroke-width="1.6"/>
+  <path d="M8.5 16 H23.5" stroke="#9aa6bd" stroke-width="2.4"/>
+  <path d="M16 16 V25" stroke="#9aa6bd" stroke-width="2.4"/>
+  <circle cx="11" cy="21" r="1" fill="#9aa6bd"/>
+  <circle cx="11" cy="25" r="1" fill="#9aa6bd"/>
+  <circle cx="21" cy="21" r="1" fill="#9aa6bd"/>
+  <circle cx="21" cy="25" r="1" fill="#9aa6bd"/>
+</svg>

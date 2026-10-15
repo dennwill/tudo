@@ -183,6 +183,10 @@ const THEMES = [
   { id: 'dark-minimalist', label: 'Dark Minimalist' },
   { id: 'light-minimalist', label: 'Light Minimalist' },
   { id: 'neo-brutalism', label: 'Neo-Brutalism' },
+  { id: 'notebook', label: 'Notebook' },
+  { id: 'terminal', label: 'Terminal' },
+  { id: 'butter', label: 'Butter' },
+  { id: 'night-watch', label: 'Night Watch' },
   { id: 'glassmorphism', label: 'Glassmorphism' },
   { id: 'windows-2000', label: 'Windows 2000' },
 ];
@@ -193,7 +197,10 @@ function applyTheme(id) {
   localStorage.setItem(THEME_KEY, id);
 }
 
-applyTheme(localStorage.getItem(THEME_KEY) || THEMES[0].id);
+// Themes that have been renamed; anyone who had picked one keeps it.
+const RENAMED_THEMES = { 'dark-fantasy': 'night-watch', nailong: 'butter' };
+const savedTheme = localStorage.getItem(THEME_KEY);
+applyTheme(RENAMED_THEMES[savedTheme] || savedTheme || THEMES[0].id);
 
 // Every row in the settings panel is the same shape: a tickbox or a radio with
 // its label beside it.
@@ -213,20 +220,68 @@ function settingsOption({ type, name, value, label, checked, onChange }) {
   return { row, input };
 }
 
+// One tile per theme: a small picture of the app in that theme's own colours,
+// with its name underneath. The picture is tagged with the theme's id, and the
+// stylesheet does the rest.
+function themeTile(theme, checked) {
+  const tile = document.createElement('label');
+  tile.className = 'theme-tile';
+  tile.title = theme.label;
+
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.name = 'theme';
+  input.value = theme.id;
+  input.checked = checked;
+  input.className = 'theme-radio';
+  input.addEventListener('change', () => applyTheme(input.value));
+  tile.appendChild(input);
+
+  const preview = document.createElement('span');
+  preview.className = 'theme-preview';
+  preview.dataset.theme = theme.id;
+  preview.setAttribute('aria-hidden', 'true');
+
+  const part = (tag, className, parent) => {
+    const el = document.createElement(tag);
+    el.className = className;
+    parent.appendChild(el);
+    return el;
+  };
+
+  const bar = part('span', 'tp-bar', preview);
+  part('span', 'tp-dot', bar);
+  part('span', 'tp-line', bar);
+
+  const body = part('span', 'tp-body', preview);
+  // Three columns, with the cards a board would have: two, one, one with a tag.
+  const columns = [2, 1, 1];
+  columns.forEach((cards, index) => {
+    const col = part('span', 'tp-col', body);
+    part('span', 'tp-head', col);
+    for (let i = 0; i < cards; i++) {
+      const card = part('span', 'tp-card', col);
+      part('span', 'tp-line', card);
+      if (index === 2) part('span', 'tp-pill', card);
+      else part('span', 'tp-line short', card);
+    }
+  });
+  tile.appendChild(preview);
+
+  const name = document.createElement('span');
+  name.className = 'theme-name';
+  name.textContent = theme.label;
+  tile.appendChild(name);
+
+  return tile;
+}
+
 function setupThemeOptions() {
   const container = document.getElementById('theme-options');
   const current = document.documentElement.dataset.theme;
 
   for (const theme of THEMES) {
-    const { row } = settingsOption({
-      type: 'radio',
-      name: 'theme',
-      value: theme.id,
-      label: theme.label,
-      checked: theme.id === current,
-      onChange: (input) => applyTheme(input.value),
-    });
-    container.appendChild(row);
+    container.appendChild(themeTile(theme, theme.id === current));
   }
 }
 
@@ -270,8 +325,6 @@ function setupFontOptions() {
       checked: font.id === currentFont,
       onChange: (input) => applyFont(input.value),
     });
-    // Each name is set in the face it names, so the list is its own preview.
-    row.style.fontFamily = fontStack(font);
     container.appendChild(row);
   }
 }
@@ -341,20 +394,92 @@ function setupColumnsOptions() {
   applyColumnVisibility();
 }
 
-// Theme, columns and font all live behind the one gear in the titlebar.
+// Appearance, columns and sync all live behind the one gear in the titlebar. The
+// gear opens a short list of groups; point at one for a moment and its options
+// fade in beside the list. Once they are showing, moving to another group swaps
+// them at once - the pause is only there so that passing over the list does not
+// make the pane flicker open and shut.
 function setupSettingsMenu() {
   const btn = document.getElementById('settings-btn');
   const panel = document.getElementById('settings-panel');
+  const nav = panel.querySelector('.settings-nav');
+  const pane = panel.querySelector('.settings-pages');
+  const items = panel.querySelectorAll('.settings-nav-item');
+  const pages = panel.querySelectorAll('.settings-page');
+
+  const OPEN_DELAY = 180;
+  // Long enough to cross the gap between the list and the pane.
+  const CLOSE_DELAY = 300;
+  let openTimer = null;
+  let closeTimer = null;
+
+  const showPage = (name) => {
+    for (const item of items) {
+      const active = item.dataset.page === name;
+      item.classList.toggle('active', active);
+      item.setAttribute('aria-current', String(active));
+    }
+    for (const page of pages) page.hidden = page.dataset.page !== name;
+    pane.scrollTop = 0;
+    // The theme previews need more room than the other groups' lists.
+    pane.classList.toggle('wide', name === 'appearance');
+    pane.classList.add('open');
+  };
+
+  const closePane = () => {
+    clearTimeout(openTimer);
+    clearTimeout(closeTimer);
+    pane.classList.remove('open');
+    for (const item of items) {
+      item.classList.remove('active');
+      item.setAttribute('aria-current', 'false');
+    }
+  };
+
+  for (const item of items) {
+    item.insertAdjacentHTML('beforeend', CHEVRON_ICON);
+    const show = () => {
+      clearTimeout(openTimer);
+      showPage(item.dataset.page);
+    };
+
+    item.addEventListener('mouseenter', () => {
+      clearTimeout(openTimer);
+      if (pane.classList.contains('open')) show();
+      else openTimer = setTimeout(show, OPEN_DELAY);
+    });
+    item.addEventListener('mouseleave', () => clearTimeout(openTimer));
+    // The keyboard and a touch screen have no hover, so they do not wait.
+    item.addEventListener('focus', show);
+    item.addEventListener('click', show);
+  }
+
+  // The pane stays while the pointer is on it or the list, and goes once it has
+  // been away from both.
+  for (const box of [nav, pane]) {
+    box.addEventListener('mouseenter', () => clearTimeout(closeTimer));
+    box.addEventListener('mouseleave', () => {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(closePane, CLOSE_DELAY);
+    });
+  }
 
   const closePanel = () => {
+    closePane();
     panel.hidden = true;
     btn.setAttribute('aria-expanded', 'false');
   };
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    panel.hidden = !panel.hidden;
-    btn.setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden) {
+      closePanel();
+      return;
+    }
+    // Every visit starts from the list alone.
+    closePane();
+    panel.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
   });
 
   document.addEventListener('click', (e) => {
@@ -373,6 +498,9 @@ const VIEW_KEY = 'tudo-view';
 
 let view = localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'board';
 let calMonth = startOfMonth(new Date());
+// The day whose tasks the side panel is showing in place of Upcoming, as a
+// dateKey, or null while Upcoming has the panel.
+let selectedDay = null;
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -420,21 +548,145 @@ function applyView() {
   document.querySelector('.board').hidden = onCalendar;
   document.getElementById('calendar').hidden = !onCalendar;
   // The Columns tickboxes have nothing to say about the calendar.
-  document.getElementById('columns-group').hidden = onCalendar;
+  document.getElementById('columns-nav').hidden = onCalendar;
 
   btn.innerHTML = onCalendar ? BOARD_ICON : CALENDAR_ICON;
   btn.title = onCalendar ? 'Back to the task board' : 'See due dates on a calendar';
   btn.setAttribute('aria-label', btn.title);
 
-  if (onCalendar) renderCalendar();
+  // Coming back to the calendar starts from Upcoming again.
+  if (!onCalendar) selectedDay = null;
+  if (onCalendar) {
+    fitUpcomingWidth();
+    renderCalendar();
+  }
+}
+
+// The width of the side panel is the user's to set, and is kept between
+// restarts. The month grid takes whatever is left.
+const UPCOMING_WIDTH_KEY = 'tudo-upcoming-width';
+const UPCOMING_WIDTH_DEFAULT = 196;
+const UPCOMING_WIDTH_MIN = 150;
+// The grid needs room for seven day columns to be readable.
+const CAL_GRID_MIN_WIDTH = 320;
+// Assigned when the handle is built. The calendar has no width while the board
+// is showing, so it is called when the calendar comes back, to fit the saved
+// width to the window as it is now.
+let fitUpcomingWidth = () => {};
+
+function setupCalendarResizer() {
+  const calendar = document.getElementById('calendar');
+  const handle = document.getElementById('cal-resizer');
+  const panel = document.getElementById('upcoming');
+
+  let width = Number(localStorage.getItem(UPCOMING_WIDTH_KEY));
+  if (!Number.isFinite(width) || width < UPCOMING_WIDTH_MIN) width = UPCOMING_WIDTH_DEFAULT;
+
+  // The calendar is hidden while the board is showing, and has no width then.
+  const maxWidth = () => {
+    const room = calendar.clientWidth;
+    if (!room) return Infinity;
+    // Less its padding and the gap, which are 10px each.
+    return Math.max(UPCOMING_WIDTH_MIN, Math.min(room * 0.6, room - 30 - CAL_GRID_MIN_WIDTH));
+  };
+  const clamp = (value) => Math.round(Math.min(Math.max(value, UPCOMING_WIDTH_MIN), maxWidth()));
+
+  const apply = () => {
+    const shown = clamp(width);
+    calendar.style.setProperty('--upcoming-w', `${shown}px`);
+    handle.setAttribute('aria-valuenow', String(shown));
+    handle.setAttribute('aria-valuemin', String(UPCOMING_WIDTH_MIN));
+  };
+  const set = (value) => {
+    width = clamp(value);
+    localStorage.setItem(UPCOMING_WIDTH_KEY, String(width));
+    apply();
+  };
+
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = panel.getBoundingClientRect().width;
+    handle.setPointerCapture(e.pointerId);
+    calendar.classList.add('resizing');
+
+    const move = (ev) => set(startWidth + (startX - ev.clientX));
+    const end = () => {
+      calendar.classList.remove('resizing');
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  });
+
+  // The handle moves left as the panel grows, so Left is wider.
+  handle.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 40 : 10;
+    const current = panel.getBoundingClientRect().width;
+    if (e.key === 'ArrowLeft') set(current + step);
+    else if (e.key === 'ArrowRight') set(current - step);
+    else return;
+    e.preventDefault();
+  });
+
+  handle.addEventListener('dblclick', () => {
+    localStorage.removeItem(UPCOMING_WIDTH_KEY);
+    width = UPCOMING_WIDTH_DEFAULT;
+    apply();
+  });
+
+  // A smaller window may no longer have room for the width that was chosen. The
+  // choice itself is kept, so a bigger window gets it back.
+  window.addEventListener('resize', apply);
+  fitUpcomingWidth = apply;
+  apply();
 }
 
 function setupCalendar() {
+  setupCalendarResizer();
+  document.getElementById('upcoming-back').addEventListener('click', () => selectDay(null));
+  document.getElementById('upcoming-add').addEventListener('click', () => {
+    if (selectedDay) openNewTaskDialog(selectedDay, longDayHeading(selectedDay));
+  });
+  document.addEventListener('keydown', (e) => {
+    // The new-task dialog and the date picker take their own Escape first.
+    if (e.key !== 'Escape' || view !== 'calendar' || !selectedDay) return;
+    if (!document.getElementById('newtask-overlay').hidden) return;
+    selectDay(null);
+  });
+
   document.getElementById('cal-prev').addEventListener('click', () => shiftMonth(-1));
   document.getElementById('cal-next').addEventListener('click', () => shiftMonth(1));
   document.getElementById('cal-today').addEventListener('click', () => {
     calMonth = startOfMonth(new Date());
     renderCalendar();
+  });
+}
+
+// Clicking the day that is already open closes it again. The cells are marked in
+// place rather than redrawn, so a month scrolled down a long way stays put.
+function selectDay(key) {
+  selectedDay = key === selectedDay ? null : key;
+
+  for (const cell of document.querySelectorAll('#cal-grid .cal-day')) {
+    const selected = cell.dataset.key === selectedDay;
+    cell.classList.toggle('selected', selected);
+    cell.querySelector('.cal-date').setAttribute('aria-pressed', String(selected));
+  }
+
+  renderUpcoming();
+}
+
+function longDayHeading(key) {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
   });
 }
 
@@ -528,6 +780,19 @@ function renderUpcoming() {
   const list = document.getElementById('upcoming-list');
   list.innerHTML = '';
 
+  // Clicking a day lends the panel to that day until it is closed.
+  const onDay = selectedDay !== null;
+  document.getElementById('calendar').classList.toggle('day-open', onDay);
+  document.getElementById('upcoming').classList.toggle('day-mode', onDay);
+  document.getElementById('upcoming-back').hidden = !onDay;
+  document.getElementById('upcoming-add').hidden = !onDay;
+  document.getElementById('upcoming-title').textContent = onDay ? dayHeading(selectedDay) : 'Upcoming';
+
+  if (onDay) {
+    renderDayTasks(list);
+    return;
+  }
+
   const entries = upcomingTasks();
   document.getElementById('upcoming-count').textContent = entries.length;
 
@@ -599,6 +864,111 @@ function renderUpcomingTask(task, status, overdue) {
   return row;
 }
 
+// Everything due on the selected day, finished work included: the grid shows it
+// there too, and this is the list that is meant to be the full picture of a day.
+function renderDayTasks(list) {
+  const entries = tasksByDueDate().get(selectedDay) || [];
+  document.getElementById('upcoming-count').textContent = entries.length;
+
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'upcoming-empty';
+    empty.textContent = 'Nothing due this day';
+    list.appendChild(empty);
+    return;
+  }
+
+  for (const { task, status } of entries) {
+    list.appendChild(renderDayTask(task, status));
+  }
+}
+
+// The tasks the panel has folded. Everything starts open, and this is the
+// panel's own memory rather than the board's `collapsed` flag: folding a task
+// here should not fold its card there, or sync that to other devices.
+const foldedDayTasks = new Set();
+
+// A task in full, as the board's card has it: the whole title, the time and the
+// column, the countdown, the reminder, the description and the importance. Only
+// the title opens the task - the description holds links, which cannot sit
+// inside a button and need to stay clickable. The chevron folds away what the
+// board's chevron folds: the reminder, description and importance.
+function renderDayTask(task, status) {
+  const done = status === 'done';
+  const overdue = !done && Date.parse(task.due) < Date.now();
+  const foldable = hasFoldableDetails(task);
+  const folded = foldable && foldedDayTasks.has(task.id);
+
+  const card = document.createElement('div');
+  card.className =
+    'day-task' + (done ? ' done' : '') + (overdue ? ' overdue' : '') + (folded ? ' collapsed' : '');
+
+  const top = document.createElement('div');
+  top.className = 'day-task-top';
+
+  if (foldable) {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'card-toggle';
+    toggle.innerHTML = CHEVRON_ICON;
+    const sync = (isFolded) => {
+      toggle.title = isFolded ? 'Expand' : 'Collapse';
+      toggle.setAttribute('aria-expanded', String(!isFolded));
+    };
+    sync(folded);
+    // Flipped in place rather than redrawn, so the list keeps its scroll.
+    toggle.addEventListener('click', () => {
+      const nowFolded = card.classList.toggle('collapsed');
+      if (nowFolded) foldedDayTasks.add(task.id);
+      else foldedDayTasks.delete(task.id);
+      sync(nowFolded);
+    });
+    top.appendChild(toggle);
+  }
+
+  const head = document.createElement('button');
+  head.type = 'button';
+  head.className = 'day-task-head';
+  head.title = 'Open on the board';
+
+  const dot = document.createElement('span');
+  dot.className = `icon-dot dot-${status}`;
+  head.appendChild(dot);
+
+  const title = document.createElement('span');
+  title.className = 'day-task-title';
+  title.textContent = task.text;
+  head.appendChild(title);
+
+  head.addEventListener('click', () => openTaskFromCalendar(task, status));
+  top.appendChild(head);
+  card.appendChild(top);
+
+  const meta = document.createElement('div');
+  meta.className = 'up-meta';
+  meta.textContent = `${formatTime(task.due)} - ${COLUMN_LABELS[status]}`;
+  card.appendChild(meta);
+
+  // Nothing is counting down to a finished task. The class is the board's, so
+  // the one-second tick that keeps the cards current keeps this current too.
+  if (!done && task.showCountdown !== false) {
+    const countdown = document.createElement('div');
+    countdown.className = 'card-countdown';
+    countdown.dataset.due = task.due;
+    countdown.textContent = formatCountdown(task.due);
+    if (countdown.textContent.startsWith('Overdue')) countdown.classList.add('overdue');
+    card.appendChild(countdown);
+  }
+
+  if (foldable) {
+    const details = document.createElement('div');
+    details.className = 'day-details';
+    appendTaskDetails(details, task);
+    card.appendChild(details);
+  }
+  return card;
+}
+
 // "Today" and "Tomorrow" are what you would say out loud; anything further off
 // gets its date.
 function dayHeading(key) {
@@ -647,18 +1017,21 @@ function renderCalendarDay(day, byDate, todayKey) {
   if (day.getMonth() !== calMonth.getMonth()) cell.classList.add('other-month');
   if (key === todayKey) cell.classList.add('today');
 
-  // Any day can start a task. The whole cell takes the click; the date is a real
-  // button so the keyboard and screen readers can reach it too, and its click
-  // bubbles up to the cell.
-  const heading = day.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  cell.title = `Add a task on ${heading}`;
-  cell.addEventListener('click', () => openNewTaskDialog(key, heading));
+  // Any day can be opened in the side panel. The whole cell takes the click; the
+  // date is a real button so the keyboard and screen readers can reach it too,
+  // and its click bubbles up to the cell.
+  const heading = longDayHeading(key);
+  cell.dataset.key = key;
+  cell.title = `See tasks on ${heading}`;
+  cell.addEventListener('click', () => selectDay(key));
+  if (key === selectedDay) cell.classList.add('selected');
 
   const date = document.createElement('button');
   date.type = 'button';
   date.className = 'cal-date';
   date.textContent = day.getDate();
-  date.setAttribute('aria-label', `Add a task on ${heading}`);
+  date.setAttribute('aria-label', `See tasks on ${heading}`);
+  date.setAttribute('aria-pressed', String(key === selectedDay));
   cell.appendChild(date);
 
   for (const { task, status } of byDate.get(key) || []) {
@@ -690,7 +1063,7 @@ function renderCalendarTask(task, status) {
   chip.appendChild(text);
 
   chip.addEventListener('click', (e) => {
-    // The chip sits inside a day that starts a new task when clicked.
+    // The chip sits inside a day that opens in the side panel when clicked.
     e.stopPropagation();
     openTaskFromCalendar(task, status);
   });

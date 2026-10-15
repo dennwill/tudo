@@ -13,9 +13,73 @@
     <div class="title-area">
       <img class="project-icon" src="assets/icon.png" alt="tudo" />
       <h1>tudo</h1>
+      <div class="settings-menu">
+        <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <div id="settings-panel" class="settings-panel" hidden>
+          <!-- The groups on the left; pointing at one shows its options on the right. -->
+          <div class="settings-nav">
+            <button type="button" class="settings-nav-item" data-page="appearance">Appearance</button>
+            <button type="button" class="settings-nav-item" id="columns-nav" data-page="columns">Columns</button>
+            <button type="button" class="settings-nav-item" data-page="sync">Sync</button>
+          </div>
+          <div class="settings-pages">
+            <div class="settings-page" data-page="appearance" hidden>
+              <div class="settings-heading">Theme</div>
+              <div id="theme-options"></div>
+              <div class="settings-heading settings-subheading">Font</div>
+              <div id="font-options"></div>
+            </div>
+            <div class="settings-page" id="columns-group" data-page="columns" hidden>
+              <div id="columns-options"></div>
+            </div>
+            <div class="settings-page" id="sync-group" data-page="sync" hidden>
+              <div id="sync-status" class="sync-status" role="status"></div>
+
+              <!-- Above both of the blocks below, so a different server can be chosen
+                   before anything is sent to the default one. -->
+              <div class="sync-block">
+                <details class="sync-server">
+                  <summary>Server</summary>
+                  <div class="sync-row">
+                    <input type="text" id="sync-url" class="sync-input" spellcheck="false" autocomplete="off" />
+                    <button type="button" id="sync-url-reset" class="sync-btn">Default</button>
+                  </div>
+                </details>
+              </div>
+
+              <!-- No key yet: start a new one, or join with one from another device. -->
+              <div id="sync-setup" class="sync-block">
+                <button type="button" id="sync-new" class="sync-btn">Create a sync key</button>
+                <div class="sync-or">or join with a key from another device</div>
+                <div class="sync-row">
+                  <input type="text" id="sync-join-input" class="sync-input" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" autocomplete="off" maxlength="40" />
+                  <button type="button" id="sync-join" class="sync-btn">Join</button>
+                </div>
+                <div class="sync-or">Your tasks are merged with theirs; nothing is replaced.</div>
+              </div>
+
+              <!-- Has a key: show it, switch sync on and off, change server, or stop. -->
+              <div id="sync-active" class="sync-block" hidden>
+                <div class="sync-row">
+                  <code id="sync-key" class="sync-key"></code>
+                  <button type="button" id="sync-reveal" class="sync-btn">Show</button>
+                  <button type="button" id="sync-copy" class="sync-btn">Copy</button>
+                </div>
+                <label class="settings-option"><input type="checkbox" id="sync-enabled" /> Sync is on</label>
+                <button type="button" id="sync-leave" class="sync-btn sync-btn-danger">Stop syncing</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span id="sync-dot" class="sync-dot" hidden></span>
       <span id="version-label" class="version-label" hidden></span>
       <button id="update-btn" class="update-btn" hidden></button>
-      <span id="sync-dot" class="sync-dot" hidden></span>
     </div>
     <div id="window-controls">
       <div class="view-switch">
@@ -29,66 +93,6 @@
       </div>
       <div class="view-switch">
         <button id="view-btn" class="icon-btn" title="See due dates on a calendar"></button>
-      </div>
-      <div class="settings-menu">
-        <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-        </button>
-        <div id="settings-panel" class="settings-panel" hidden>
-          <div class="settings-group">
-            <div class="settings-heading">Theme</div>
-            <div id="theme-options"></div>
-          </div>
-          <div class="settings-group" id="columns-group">
-            <div class="settings-heading">Columns</div>
-            <div id="columns-options"></div>
-          </div>
-          <div class="settings-group">
-            <div class="settings-heading">Font</div>
-            <div id="font-options"></div>
-          </div>
-          <div class="settings-group" id="sync-group">
-            <div class="settings-heading">Sync</div>
-            <div id="sync-status" class="sync-status" role="status"></div>
-
-            <!-- Above both of the blocks below, so a different server can be chosen
-                 before anything is sent to the default one. -->
-            <div class="sync-block">
-              <details class="sync-server">
-                <summary>Server</summary>
-                <div class="sync-row">
-                  <input type="text" id="sync-url" class="sync-input" spellcheck="false" autocomplete="off" />
-                  <button type="button" id="sync-url-reset" class="sync-btn">Default</button>
-                </div>
-              </details>
-            </div>
-
-            <!-- No key yet: start a new one, or join with one from another device. -->
-            <div id="sync-setup" class="sync-block">
-              <button type="button" id="sync-new" class="sync-btn">Create a sync key</button>
-              <div class="sync-or">or join with a key from another device</div>
-              <div class="sync-row">
-                <input type="text" id="sync-join-input" class="sync-input" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" autocomplete="off" maxlength="40" />
-                <button type="button" id="sync-join" class="sync-btn">Join</button>
-              </div>
-              <div class="sync-or">Your tasks are merged with theirs; nothing is replaced.</div>
-            </div>
-
-            <!-- Has a key: show it, switch sync on and off, change server, or stop. -->
-            <div id="sync-active" class="sync-block" hidden>
-              <div class="sync-row">
-                <code id="sync-key" class="sync-key"></code>
-                <button type="button" id="sync-reveal" class="sync-btn">Show</button>
-                <button type="button" id="sync-copy" class="sync-btn">Copy</button>
-              </div>
-              <label class="settings-option"><input type="checkbox" id="sync-enabled" /> Sync is on</label>
-              <button type="button" id="sync-leave" class="sync-btn sync-btn-danger">Stop syncing</button>
-            </div>
-          </div>
-        </div>
       </div>
       <button id="btn-min" title="Minimize">&#8211;</button>
       <button id="btn-close" title="Hide">&#10005;</button>
@@ -166,11 +170,15 @@
       <div class="cal-undated" id="cal-undated" hidden></div>
     </div>
 
+    <div class="cal-resizer" id="cal-resizer" role="separator" aria-orientation="vertical" aria-label="Resize the side panel" tabindex="0"></div>
+
     <aside class="upcoming" id="upcoming">
       <div class="upcoming-head">
-        <span class="upcoming-title">Upcoming</span>
+        <button type="button" class="cal-nav" id="upcoming-back" title="Back to Upcoming" aria-label="Back to Upcoming" hidden>&#8249;</button>
+        <span class="upcoming-title" id="upcoming-title">Upcoming</span>
         <span class="count" id="upcoming-count">0</span>
       </div>
+      <button type="button" class="dt-btn up-add" id="upcoming-add" hidden>+ Add task</button>
       <div class="upcoming-list" id="upcoming-list"></div>
     </aside>
   </section>
