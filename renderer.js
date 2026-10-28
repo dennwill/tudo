@@ -26,7 +26,8 @@ const REMIND_PRESETS = [
 const REMIND_CUSTOM = 'custom';
 // A month out is already further ahead than the presets go; past that the
 // custom fields are almost certainly a typo.
-const REMIND_MAX_MINUTES = 60 * 24 * 30;
+const REMIND_MAX_DAYS = 30;
+const REMIND_MAX_MINUTES = 60 * 24 * REMIND_MAX_DAYS;
 
 // Mirrors the maxlength on the "Add issue" fields in index.html.
 const TITLE_MAX_LENGTH = 200;
@@ -708,21 +709,32 @@ function shiftMonth(delta) {
 // due value is a datetime-local string, so the first ten characters are already
 // the day. An event is an entry whose status is EVENTS, and its `task` is the
 // event itself - the calendar draws the two kinds differently but files them alike.
+// A task has one day; an event has every day from its start to its end.
 function tasksByDueDate() {
   const byDate = new Map();
 
-  for (const list of ITEM_LISTS) {
-    for (const task of state[list]) {
+  const file = (key, entry) => {
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key).push(entry);
+  };
+
+  for (const status of STATUSES) {
+    for (const task of state[status]) {
       if (!task.due || !formatDue(task.due)) continue;
-      const key = task.due.slice(0, 10);
-      if (!byDate.has(key)) byDate.set(key, []);
-      byDate.get(key).push({ task, status: list });
+      file(task.due.slice(0, 10), { task, status });
     }
   }
 
-  // Earliest first within a day, so a cell reads down the day like a schedule.
-  for (const entries of byDate.values()) {
-    entries.sort((a, b) => a.task.due.localeCompare(b.task.due));
+  // An event that runs over several days sits on each of them.
+  for (const event of state[EVENTS]) {
+    if (!event.due || !formatDue(event.due)) continue;
+    for (const key of eventDays(event)) file(key, { task: event, status: EVENTS });
+  }
+
+  // Banners, then timed events, then tasks; earliest first within each, so a cell
+  // reads down the day like a schedule.
+  for (const [key, entries] of byDate) {
+    entries.sort((a, b) => dayRank(a, key) - dayRank(b, key) || a.task.due.localeCompare(b.task.due));
   }
 
   return byDate;
@@ -793,28 +805,96 @@ function upcomingTasks() {
   return entries.sort((a, b) => a.task.due.localeCompare(b.task.due));
 }
 
-// When an event is over: its end, or the end of its day if it lasts all day, or
-// its start if it never said when it finishes.
+// An event can run over several days, so the calendar files it under each one.
+// A mistyped year would otherwise fill the grid for centuries, hence the cap.
+const MAX_EVENT_DAYS = 366;
+
+// The last day an event touches. A timed event that ends exactly at midnight
+// stops on the day before, instead of leaving a sliver of an empty day behind it.
+function eventLastDay(event) {
+  const first = event.due.slice(0, 10);
+  if (!event.end) return first;
+  const last = event.allDay ? event.end.slice(0, 10) : dateKey(new Date(Date.parse(event.end) - 60000));
+  return last > first ? last : first;
+}
+
+// Every day an event falls on, first to last.
+function eventDays(event) {
+  const first = event.due.slice(0, 10);
+  const last = eventLastDay(event);
+  const [year, month, day] = first.split('-').map(Number);
+  const days = [first];
+  for (let i = 1; i <= MAX_EVENT_DAYS && days[days.length - 1] < last; i++) {
+    days.push(dateKey(new Date(year, month - 1, day + i)));
+  }
+  return days;
+}
+
+// When an event is over: its end, or the end of its last day if it lasts all
+// day, or its start if it never said when it finishes.
 function eventEndMs(event) {
-  if (event.allDay) return Date.parse(`${event.due.slice(0, 10)}T23:59:59`);
+  if (event.allDay) return Date.parse(`${eventLastDay(event)}T23:59:59`);
   return Date.parse(event.end || event.due);
 }
 
-// "2:00 PM - 3:30 PM", or "All day".
-function eventTimeRange(event) {
-  if (event.allDay) return 'All day';
-  return event.end ? `${formatTime(event.due)} - ${formatTime(event.end)}` : formatTime(event.due);
+// What the event is doing on `dayKey`: "2:00 PM - 3:30 PM" or "All day" for one
+// that fits in a day, and for a longer one where it starts, where it finishes,
+// or "All day" for the days it simply covers.
+function eventTimeRange(event, dayKey = event.due.slice(0, 10)) {
+  if (coversWholeDay(event, dayKey)) return 'All day';
+
+  const first = event.due.slice(0, 10);
+  const last = eventLastDay(event);
+  if (first === last) {
+    return event.end ? `${formatTime(event.due)} - ${formatTime(event.end)}` : formatTime(event.due);
+  }
+  if (dayKey === first) return `From ${formatTime(event.due)}`;
+  if (dayKey === last) return `Until ${formatTime(event.end)}`;
+  return 'All day';
+}
+
+// Does the event take up the whole of `dayKey`? An all-day event does, and so
+// does any day strictly between the first and last of a longer one. Those are
+// drawn as banners and sit above the events that have a time.
+function coversWholeDay(event, dayKey) {
+  if (event.allDay) return true;
+  return dayKey > event.due.slice(0, 10) && dayKey < eventLastDay(event);
+}
+
+// Where an entry sits within a day: events that cover it whole, then events with
+// a time, then tasks. A day then reads from what it is, to when things happen in
+// it, to what is due - instead of tasks and events interleaved by the clock.
+function dayRank({ task, status }, dayKey) {
+  if (status !== EVENTS) return 2;
+  return coversWholeDay(task, dayKey) ? 0 : 1;
 }
 
 // "Thu, Oct 29, 2:00 PM - 3:30 PM": the whole answer to "when", for tooltips and
 // notifications that have no heading above them to give the day.
 function eventWhen(event) {
-  const day = new Date(event.due).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-  return `${day}, ${eventTimeRange(event)}`;
+  const dayOf = (value) =>
+    new Date(value).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  if (eventLastDay(event) === event.due.slice(0, 10)) {
+    return `${dayOf(event.due)}, ${eventTimeRange(event)}`;
+  }
+  if (event.allDay) return `${dayOf(event.due)} - ${dayOf(event.end)}, All day`;
+  return `${dayOf(event.due)}, ${formatTime(event.due)} - ${dayOf(event.end)}, ${formatTime(event.end)}`;
+}
+
+// Wall-clock arithmetic on "YYYY-MM-DDTHH:MM" strings. It is done as if in UTC so
+// that a clock change cannot slip an hour into it: ten o'clock plus an hour is
+// eleven, whatever night it falls on.
+function wallClockMs(value) {
+  return Date.parse(`${value.slice(0, 16)}:00Z`);
+}
+
+function addMinutesToDue(value, minutes) {
+  return new Date(wallClockMs(value) + minutes * 60000).toISOString().slice(0, 16);
+}
+
+function minutesBetweenDues(later, earlier) {
+  return (wallClockMs(later) - wallClockMs(earlier)) / 60000;
 }
 
 function renderUpcoming() {
@@ -853,10 +933,14 @@ function renderUpcoming() {
   const overdue = entries.filter(isOverdue);
   if (overdue.length) list.appendChild(renderUpcomingGroup('Overdue', overdue, true));
 
+  // An event that began on an earlier day and is still going is listed under
+  // today, where it now is, not under the day it began.
+  const todayKey = dateKey(new Date());
   const byDay = new Map();
   for (const entry of entries) {
     if (isOverdue(entry)) continue;
-    const key = entry.task.due.slice(0, 10);
+    const startKey = entry.task.due.slice(0, 10);
+    const key = entry.status === EVENTS && startKey < todayKey ? todayKey : startKey;
     if (!byDay.has(key)) byDay.set(key, []);
     byDay.get(key).push(entry);
   }
@@ -924,7 +1008,23 @@ function renderDayTasks(list) {
     return;
   }
 
+  // The entries come sorted with every event ahead of every task. A day with both
+  // gets a heading over each, so the split is plain; a day with only one kind
+  // doesn't need to be told what it is.
+  const hasEvents = entries.some((entry) => entry.status === EVENTS);
+  const hasTasks = entries.some((entry) => entry.status !== EVENTS);
+  const label = (text) => {
+    const heading = document.createElement('div');
+    heading.className = 'up-group-label';
+    heading.textContent = text;
+    list.appendChild(heading);
+  };
+
+  let section = null;
   for (const { task, status } of entries) {
+    const kind = status === EVENTS ? 'Events' : 'Tasks';
+    if (hasEvents && hasTasks && kind !== section) label(kind);
+    section = kind;
     list.appendChild(renderDayTask(task, status));
   }
 }
@@ -940,7 +1040,7 @@ const foldedDayTasks = new Set();
 // inside a button and need to stay clickable. The chevron folds away what the
 // board's chevron folds: the reminder, description and importance.
 function renderDayTask(task, status) {
-  if (status === EVENTS) return renderDayEvent(task);
+  if (status === EVENTS) return renderDayEvent(task, selectedDay);
 
   const done = status === 'done';
   const overdue = !done && Date.parse(task.due) < Date.now();
@@ -1083,14 +1183,14 @@ function renderCalendarDay(day, byDate, todayKey) {
   cell.appendChild(date);
 
   for (const { task, status } of byDate.get(key) || []) {
-    cell.appendChild(renderCalendarTask(task, status));
+    cell.appendChild(renderCalendarTask(task, status, key));
   }
 
   return cell;
 }
 
-function renderCalendarTask(task, status) {
-  if (status === EVENTS) return renderCalendarEvent(task);
+function renderCalendarTask(task, status, dayKey) {
+  if (status === EVENTS) return renderCalendarEvent(task, dayKey);
 
   const chip = document.createElement('button');
   chip.type = 'button';
@@ -1211,15 +1311,43 @@ function isPastEvent(event) {
   return eventEndMs(event) < Date.now();
 }
 
-function renderCalendarEvent(event) {
+// What marks an entry as an event: a small calendar, where a task has the dot of
+// the column it is in. Shape tells them apart where colour might not.
+function eventMark() {
+  const mark = document.createElement('span');
+  mark.className = 'event-mark';
+  mark.innerHTML = CALENDAR_ICON;
+  return mark;
+}
+
+// "2:00 PM" as "2p" and "2:30 PM" as "2:30p", so a time can sit in front of a
+// title on a chip that has little room. A 24-hour clock, or a language whose
+// day periods this doesn't recognise, just gets the time as it is.
+function formatTimeCompact(due) {
+  return formatTime(due)
+    .replace(/:00(?=\s?[AP]M)/i, '')
+    .replace(/\s?([AP])M/i, (_, period) => period.toLowerCase());
+}
+
+function renderCalendarEvent(event, dayKey) {
+  const banner = coversWholeDay(event, dayKey);
   const chip = document.createElement('button');
   chip.type = 'button';
-  chip.className = 'cal-task event' + (isPastEvent(event) ? ' past' : '');
+  chip.className =
+    'cal-task event' + (banner ? ' banner' : '') + (isPastEvent(event) ? ' past' : '');
   chip.title = eventTooltip(event);
 
-  const dot = document.createElement('span');
-  dot.className = 'icon-dot dot-event';
-  chip.appendChild(dot);
+  chip.appendChild(eventMark());
+
+  // A timed event leads with when it starts - that is what an event is about -
+  // on the day it starts. A banner has no time to give, and a longer event's last
+  // day only says that it is still going.
+  if (!banner && dayKey === event.due.slice(0, 10)) {
+    const time = document.createElement('span');
+    time.className = 'cal-event-time';
+    time.textContent = formatTimeCompact(event.due);
+    chip.appendChild(time);
+  }
 
   const text = document.createElement('span');
   text.className = 'cal-task-text';
@@ -1240,25 +1368,29 @@ function renderUpcomingEvent(event) {
   row.className = 'up-task event';
   row.title = eventTooltip(event);
 
-  const dot = document.createElement('span');
-  dot.className = 'icon-dot dot-event';
-  row.appendChild(dot);
+  row.appendChild(eventMark());
 
   const text = document.createElement('span');
   text.className = 'up-text';
   text.textContent = event.text;
   row.appendChild(text);
 
+  // Listed under today though it began earlier: say when it ends instead.
+  const ongoing = event.due.slice(0, 10) < dateKey(new Date());
   const time = document.createElement('span');
   time.className = 'up-time';
-  time.textContent = event.allDay ? 'All day' : formatTime(event.due);
+  time.textContent = ongoing
+    ? `Until ${formatDayShort(event.end || event.due)}`
+    : event.allDay
+      ? 'All day'
+      : formatTime(event.due);
   row.appendChild(time);
 
   row.addEventListener('click', () => openEventDialog({ event }));
   return row;
 }
 
-function renderDayEvent(event) {
+function renderDayEvent(event, dayKey) {
   const card = document.createElement('div');
   card.className = 'day-task event' + (isPastEvent(event) ? ' past' : '');
 
@@ -1267,9 +1399,7 @@ function renderDayEvent(event) {
   head.className = 'day-task-head';
   head.title = 'Edit event';
 
-  const dot = document.createElement('span');
-  dot.className = 'icon-dot dot-event';
-  head.appendChild(dot);
+  head.appendChild(eventMark());
 
   const title = document.createElement('span');
   title.className = 'day-task-title';
@@ -1281,7 +1411,7 @@ function renderDayEvent(event) {
 
   const when = document.createElement('div');
   when.className = 'up-meta';
-  when.textContent = eventTimeRange(event);
+  when.textContent = eventTimeRange(event, dayKey);
   card.appendChild(when);
 
   if (event.location) {
@@ -1299,14 +1429,6 @@ function renderDayEvent(event) {
     card.appendChild(reminder);
   }
   return card;
-}
-
-// "09:00" plus an hour, held at the end of the day: an event is one day long, so
-// a start late in the evening still gets an end that comes after it.
-function addMinutesToTime(value, minutes) {
-  const { hour, minute } = parseTimeValue(value);
-  const total = Math.min(hour * 60 + minute + minutes, 23 * 60 + 59);
-  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
 /* ------------------------------------------------------------- event dialog */
@@ -1328,15 +1450,19 @@ function openEventDialog({ day, event = null }) {
     remindCustom: !isRemindPreset(offset),
   };
 
-  const endValue =
-    event && event.end ? event.end.slice(11, 16) : addMinutesToTime(draft.due.slice(11, 16), 60);
-  const endTime = createTimeField({ value: endValue });
+  // An all-day event with no end finishes on the day it starts, and a new or
+  // open-ended one gets an hour, the usual length for something to start with.
+  draft.end =
+    event && event.end
+      ? event.end
+      : draft.allDay
+        ? `${startDay}T00:00`
+        : addMinutesToDue(draft.due, 60);
   const reminder = createReminderControls(draft);
 
   eventDialog = {
     event,
     draft,
-    endTime,
     reminder,
     opener: document.activeElement,
   };
@@ -1347,13 +1473,12 @@ function openEventDialog({ day, event = null }) {
   document.getElementById('event-title').value = event ? event.text : '';
   document.getElementById('event-location').value = event ? event.location : '';
   document.getElementById('event-allday').checked = draft.allDay;
-  document.getElementById('event-end').replaceChildren(endTime.el);
   document.getElementById('event-remind').replaceChildren(reminder.toggle, reminder.select, reminder.customRow);
   document.getElementById('event-save').textContent = event ? 'Save' : 'Add event';
   document.getElementById('event-delete').hidden = !event;
 
   mountEventStart();
-  syncEventAllDay();
+  mountEventEnd();
   reminder.refresh();
   document.getElementById('event-overlay').hidden = false;
   document.getElementById('event-title').focus();
@@ -1368,16 +1493,22 @@ function closeEventDialog() {
   if (opener && opener.isConnected) opener.focus();
 }
 
-// The start field is rebuilt rather than updated when All day flips, because it
-// shows the time only for events that have one.
+// The start and end fields are rebuilt rather than updated when All day flips,
+// because they show a time only for events that have one.
 function mountEventStart() {
   const { draft } = eventDialog;
   const field = createDueField({
     value: draft.due,
     dateOnly: draft.allDay,
     onChange: (due) => {
+      const before = draft.due;
       draft.due = due;
-      if (due && !draft.allDay) keepEventEndAfterStart();
+      // Moving the start moves the end with it, so the event keeps its length
+      // instead of being left ending before it begins.
+      if (due && before && draft.end) {
+        draft.end = addMinutesToDue(draft.end, minutesBetweenDues(due, before));
+        mountEventEnd();
+      }
       // The reminder counts back from the start, so it follows it.
       eventDialog.reminder.refresh();
     },
@@ -1385,20 +1516,20 @@ function mountEventStart() {
   document.getElementById('event-start').replaceChildren(field);
 }
 
-// Moving the start past the end drags the end along, an hour after it, instead of
-// leaving the dialog in a state Save would refuse.
-function keepEventEndAfterStart() {
-  const { draft, endTime } = eventDialog;
-  const start = draft.due.slice(11, 16);
-  if (endTime.getValue() <= start) endTime.setValue(addMinutesToTime(start, 60));
-}
-
-function syncEventAllDay() {
-  document.getElementById('event-end-row').hidden = eventDialog.draft.allDay;
+function mountEventEnd() {
+  const { draft } = eventDialog;
+  const field = createDueField({
+    value: draft.end,
+    dateOnly: draft.allDay,
+    onChange: (end) => {
+      draft.end = end;
+    },
+  });
+  document.getElementById('event-end').replaceChildren(field);
 }
 
 function saveEventDialog() {
-  const { event, draft, endTime } = eventDialog;
+  const { event, draft } = eventDialog;
   const titleInput = document.getElementById('event-title');
   const text = titleInput.value.trim();
   if (!text) {
@@ -1411,13 +1542,30 @@ function saveEventDialog() {
     return;
   }
 
-  // An all-day event is pinned to midnight with no end; its time is never shown.
+  // An all-day event is pinned to midnight, and keeps an end only when it runs
+  // past its first day: its times are never shown, so they are never kept.
   const day = draft.due.slice(0, 10);
-  const due = draft.allDay ? `${day}T00:00` : draft.due.slice(0, 16);
-  const end = draft.allDay ? null : `${day}T${endTime.getValue()}`;
-  if (end && end <= due) {
-    showToast('An event must end after it starts');
-    return;
+  let due;
+  let end;
+  if (draft.allDay) {
+    due = `${day}T00:00`;
+    const endDay = draft.end ? draft.end.slice(0, 10) : day;
+    if (endDay < day) {
+      showToast('An event must end on or after the day it starts');
+      return;
+    }
+    end = endDay > day ? `${endDay}T00:00` : null;
+  } else {
+    due = draft.due.slice(0, 16);
+    if (!draft.end) {
+      showToast('An event needs an end');
+      return;
+    }
+    end = draft.end.slice(0, 16);
+    if (end <= due) {
+      showToast('An event must end after it starts');
+      return;
+    }
   }
 
   const fields = {
@@ -1479,14 +1627,21 @@ function setupEventDialog() {
   document.getElementById('event-allday').addEventListener('change', (e) => {
     const { draft } = eventDialog;
     draft.allDay = e.target.checked;
-    // Midnight is where an all-day event is parked, not a time anyone chose, so
-    // turning All day off lands on the usual morning start instead.
-    if (!draft.allDay && draft.due && draft.due.endsWith('T00:00')) {
-      draft.due = `${draft.due.slice(0, 10)}T${DEFAULT_DUE_TIME}`;
-      keepEventEndAfterStart();
+    if (draft.due && draft.end) {
+      const endDay = draft.end.slice(0, 10);
+      if (draft.allDay) {
+        draft.end = `${endDay}T00:00`;
+      } else {
+        // Midnight is where an all-day event is parked, not a time anyone chose,
+        // so turning All day off lands on the usual morning start instead, and
+        // ends at the same time of day as it starts, an hour on.
+        if (draft.due.endsWith('T00:00')) draft.due = `${draft.due.slice(0, 10)}T${DEFAULT_DUE_TIME}`;
+        draft.end = addMinutesToDue(`${endDay}T${draft.due.slice(11, 16)}`, 60);
+        if (draft.end <= draft.due) draft.end = addMinutesToDue(draft.due, 60);
+      }
     }
     mountEventStart();
-    syncEventAllDay();
+    mountEventEnd();
   });
 
   document.getElementById('event-modal').addEventListener('submit', (e) => {
@@ -1590,9 +1745,15 @@ async function init() {
   for (const event of state[EVENTS]) {
     event.allDay = event.allDay === true;
     event.location = typeof event.location === 'string' ? event.location : '';
-    // An end only means something after the start, on the same day.
-    const sameDay = typeof event.end === 'string' && event.end.slice(0, 10) === event.due.slice(0, 10);
-    event.end = !event.allDay && sameDay && event.end > event.due ? event.end : null;
+    // An end only means something after the start. An all-day event keeps one
+    // only as the day it finishes on, which must come after the day it starts.
+    const hasEnd = typeof event.end === 'string' && !!parseDueValue(event.end);
+    if (event.allDay) {
+      const endDay = hasEnd ? event.end.slice(0, 10) : '';
+      event.end = endDay > event.due.slice(0, 10) ? `${endDay}T00:00` : null;
+    } else {
+      event.end = hasEnd && event.end > event.due ? event.end : null;
+    }
     event.remindOffset = clampRemindOffset(event.remindOffset);
     event.remind = event.remind === true;
     event.reminderFired = event.reminderFired === true;
@@ -1624,6 +1785,7 @@ async function init() {
   setupCalendar();
   setupNewTaskDialog();
   setupEventDialog();
+  setupTaskDetail();
   setupViewToggle();
 
   document.getElementById('btn-min').addEventListener('click', () => window.tudo.minimize());
@@ -1652,6 +1814,7 @@ function render() {
 
   // Both views draw from state, so whichever is on show is redrawn with it.
   if (view === 'calendar') renderCalendar();
+  if (detailDialog) renderTaskDetail();
 }
 
 function renderTask(task, status) {
@@ -1710,8 +1873,13 @@ function renderTask(task, status) {
     const title = document.createElement('div');
     title.className = 'card-title';
     title.textContent = task.text;
-    title.addEventListener('click', () => {
-      toggleEditor(task);
+
+    // The pencil is the way into the editor; anywhere else on the card shows the
+    // task in full. The buttons (edit, delete, drag, fold) and the links in a
+    // description do their own thing, so a click that lands on one is theirs.
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('button, a')) return;
+      openTaskDetail(task);
     });
 
     if (collapsible) {
@@ -1769,7 +1937,7 @@ function renderCollapseToggle(task, collapsed) {
   toggle.setAttribute('aria-expanded', String(!collapsed));
   toggle.innerHTML = CHEVRON_ICON;
   toggle.addEventListener('click', (e) => {
-    // The title beside it opens the editor; this must not do both.
+    // The card around it opens the task's details; this must not do both.
     e.stopPropagation();
     task.collapsed = !collapsed;
     persistAndRender();
@@ -1839,6 +2007,83 @@ function appendTaskDetails(li, task) {
     meta.appendChild(badge);
     li.appendChild(meta);
   }
+}
+
+/* ------------------------------------------------------------ task details */
+
+// Clicking a card opens it here: the whole task at a size that is easy to read,
+// with everything a folded card hides. It only shows - the pencil on the card is
+// the one way into the editor. `detailDialog` remembers which task is open (by
+// id, so a sync that replaces the object doesn't lose it) and what to refocus.
+let detailDialog = null;
+
+function findTask(id) {
+  for (const status of STATUSES) {
+    const task = state[status].find((t) => t.id === id);
+    if (task) return { task, status };
+  }
+  return null;
+}
+
+function openTaskDetail(task) {
+  detailDialog = { id: task.id, opener: document.activeElement };
+  renderTaskDetail();
+  document.getElementById('detail-overlay').hidden = false;
+  document.getElementById('detail-close').focus();
+}
+
+function closeTaskDetail() {
+  if (!detailDialog) return;
+  const { opener } = detailDialog;
+  detailDialog = null;
+  document.getElementById('detail-overlay').hidden = true;
+  if (opener && opener.isConnected) opener.focus();
+}
+
+// Drawn from the task as it is now, and again whenever the board is redrawn, so
+// a change arriving from another device shows up, and a task deleted there closes
+// the dialog instead of leaving its ghost on screen.
+function renderTaskDetail() {
+  const found = findTask(detailDialog.id);
+  if (!found) {
+    closeTaskDetail();
+    return;
+  }
+  const { task, status } = found;
+
+  document.getElementById('detail-modal').classList.toggle('completed', status === 'done');
+  document.getElementById('detail-dot').className = `icon-dot dot-${status}`;
+  document.getElementById('detail-status').textContent = COLUMN_LABELS[status];
+  document.getElementById('detail-title').textContent = task.text;
+
+  // The card's own pieces, so the two can never describe a task differently. The
+  // dialog is never folded: showing what a folded card hides is what it is for.
+  const body = document.getElementById('detail-body');
+  body.replaceChildren();
+  appendDueRow(body, task);
+  appendTaskDetails(body, task);
+  if (!body.childElementCount) {
+    const empty = document.createElement('div');
+    empty.className = 'detail-empty';
+    empty.textContent = 'No due date, reminder or description';
+    body.appendChild(empty);
+  }
+}
+
+function setupTaskDetail() {
+  const overlay = document.getElementById('detail-overlay');
+  document.getElementById('detail-close').addEventListener('click', closeTaskDetail);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeTaskDetail();
+  });
+  // On the document, not the dialog: clicking its text leaves the focus nowhere
+  // inside it, and Escape should still close it.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && detailDialog) {
+      e.stopPropagation();
+      closeTaskDetail();
+    }
+  });
 }
 
 /* ------------------------------------------------------------- date picker */
@@ -2469,19 +2714,41 @@ function createReminderControls(draft, hasDate = () => !!draft.due) {
     return input;
   };
 
-  const hoursInput = makeCustomField('h', Math.floor(REMIND_MAX_MINUTES / 60), 'Hours before the due time');
+  const daysInput = makeCustomField('d', REMIND_MAX_DAYS, 'Days before the due time');
+  const hoursInput = makeCustomField('h', 23, 'Hours before the due time');
   const minutesInput = makeCustomField('m before', 59, 'Minutes before the due time');
-  hoursInput.value = String(Math.floor(draft.remindOffset / 60));
-  minutesInput.value = String(draft.remindOffset % 60);
+
+  // Shows the offset split into its parts. Used when it is set from outside the
+  // fields (a preset, or the saved value) and when a typed one has been tidied.
+  const showOffset = () => {
+    const { days, hours, minutes } = splitRemindOffset(draft.remindOffset);
+    daysInput.value = String(days);
+    hoursInput.value = String(hours);
+    minutesInput.value = String(minutes);
+  };
+  showOffset();
+
+  // A field's number held to its own range, so 90 minutes cannot be typed in
+  // place of 1 hour 30. Anything that isn't a number counts as 0.
+  const fieldValue = (input, max) => Math.min(Math.max(Math.round(Number(input.value)) || 0, 0), max);
 
   const readCustomFields = () => {
-    const hours = Number(hoursInput.value) || 0;
-    const mins = Number(minutesInput.value) || 0;
-    draft.remindOffset = clampRemindOffset(hours * 60 + mins);
+    const days = fieldValue(daysInput, REMIND_MAX_DAYS);
+    const hours = fieldValue(hoursInput, 23);
+    const mins = fieldValue(minutesInput, 59);
+    draft.remindOffset = clampRemindOffset(days * 1440 + hours * 60 + mins);
   };
 
-  hoursInput.addEventListener('input', readCustomFields);
-  minutesInput.addEventListener('input', readCustomFields);
+  for (const input of [daysInput, hoursInput, minutesInput]) {
+    // The offset follows every keystroke, so Save always sees what is on screen...
+    input.addEventListener('input', readCustomFields);
+    // ...and leaving a field corrects what it shows, including 30 days and a bit,
+    // which is past the longest reminder and so comes back as exactly 30.
+    input.addEventListener('change', () => {
+      readCustomFields();
+      showOffset();
+    });
+  }
 
   select.addEventListener('change', () => {
     if (select.value === REMIND_CUSTOM) {
@@ -2489,11 +2756,10 @@ function createReminderControls(draft, hasDate = () => !!draft.due) {
     } else {
       draft.remindCustom = false;
       draft.remindOffset = clampRemindOffset(Number(select.value));
-      hoursInput.value = String(Math.floor(draft.remindOffset / 60));
-      minutesInput.value = String(draft.remindOffset % 60);
+      showOffset();
     }
     refresh();
-    if (draft.remindCustom) hoursInput.focus();
+    if (draft.remindCustom) daysInput.focus();
   });
 
   const refresh = () => {
@@ -3051,11 +3317,19 @@ function formatOffset(minutes) {
   const preset = REMIND_PRESETS.find((p) => p.minutes === offset);
   if (preset) return preset.label.toLowerCase();
 
-  const hours = Math.floor(offset / 60);
-  const mins = offset % 60;
-  if (!hours) return `${mins}m before`;
-  if (!mins) return `${hours}h before`;
-  return `${hours}h ${mins}m before`;
+  // "2d 3h 15m before", leaving out whichever parts are zero.
+  const { days, hours, minutes: mins } = splitRemindOffset(offset);
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (mins) parts.push(`${mins}m`);
+  return `${parts.join(' ')} before`;
+}
+
+// A number of minutes as the days, hours and minutes the custom fields show.
+function splitRemindOffset(minutes) {
+  const offset = clampRemindOffset(minutes);
+  return { days: Math.floor(offset / 1440), hours: Math.floor((offset % 1440) / 60), minutes: offset % 60 };
 }
 
 // The moment the notification is due. NaN whenever there is nothing to hang it

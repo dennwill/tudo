@@ -225,6 +225,18 @@
     </form>
   </div>
 
+  <div id="detail-overlay" hidden>
+    <div id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div id="detail-head">
+        <span id="detail-dot"></span>
+        <span id="detail-status"></span>
+        <button type="button" id="detail-close" title="Close" aria-label="Close">&times;</button>
+      </div>
+      <div id="detail-title"></div>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+
   <div id="confirm-overlay" hidden>
     <div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-message">
       <p id="confirm-message">Delete this task?</p>

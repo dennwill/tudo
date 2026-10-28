@@ -1523,8 +1523,10 @@ body {
   display: none;
 }
 
+/* Sized by their text, and onto separate lines when the panel is too narrow for
+   both - uppercase themes need more room than the others. */
 .up-add {
-  flex: 1 1 70px;
+  flex: 1 1 auto;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -1832,11 +1834,56 @@ body {
   color: var(--danger);
 }
 
-/* Events: the accent edge sets them apart from tasks at a glance. */
+/* Events are filled, tasks are outlined. An event takes a tint of the accent and a
+   bar down its left edge; one that covers the whole day - a banner - is tinted
+   deeper still, so what spans a day reads above what happens in it. Mixing from
+   the theme's own colours keeps the text readable in all of them. */
 .cal-task.event,
 .up-task.event,
 .day-task.event {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
   border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--card-bg));
+}
+
+.cal-task.event:hover,
+.up-task.event:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 26%, var(--card-hover));
+}
+
+.cal-task.event.banner {
+  background: color-mix(in srgb, var(--accent) 32%, var(--card-bg));
+  font-weight: 600;
+}
+
+/* The mark that says "event": a small calendar, where a task has its status dot. */
+.event-mark {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--accent-text);
+}
+
+.event-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.day-task-head .event-mark {
+  width: 11px;
+  height: 11px;
+  margin-top: 3px;
+}
+
+/* When a timed event starts, in front of its title on the grid. */
+.cal-event-time {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--accent-text);
 }
 
 .cal-task.past,
@@ -1935,8 +1982,6 @@ body {
 .dot-doing { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
 .dot-onhold { background: #a78bfa; box-shadow: 0 0 8px rgba(167, 139, 250, 0.4); }
 .dot-done { background: var(--accent); box-shadow: 0 0 8px rgba(94, 106, 210, 0.4); }
-/* An event has no status, so it gets a shape of its own: a diamond in the accent. */
-.dot-event { background: var(--accent-text); border-radius: 1px; transform: rotate(45deg) scale(0.85); }
 
 .count {
   font-family: var(--font-mono);
@@ -2319,7 +2364,9 @@ body.dragging-card #trash-zone {
   width: 100%;
 }
 
-.card-title {
+/* A card opens its details when clicked, so the whole of it points. The buttons
+   on it keep their own cursors. */
+.card:not(.editing) {
   cursor: pointer;
 }
 
@@ -2373,8 +2420,11 @@ body.dragging-card #trash-zone {
 }
 
 /* The "Custom..." row: two number fields counting back from the due date. */
+/* Three number fields and their units: they wrap onto a second line rather than
+   run out of a narrow card. */
 .remind-custom {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
 }
@@ -2385,7 +2435,7 @@ body.dragging-card #trash-zone {
 }
 
 .remind-number {
-  width: 52px;
+  width: 46px;
   background: var(--card-bg);
   border: var(--border-w) solid var(--border-focus);
   border-radius: var(--radius-sm);
@@ -2928,7 +2978,8 @@ body.dragging-card #trash-zone {
 
 #confirm-overlay,
 #newtask-overlay,
-#event-overlay {
+#event-overlay,
+#detail-overlay {
   position: fixed;
   inset: 0;
   background: var(--overlay-bg);
@@ -2941,7 +2992,8 @@ body.dragging-card #trash-zone {
 
 #confirm-overlay[hidden],
 #newtask-overlay[hidden],
-#event-overlay[hidden] {
+#event-overlay[hidden],
+#detail-overlay[hidden] {
   display: none;
 }
 
@@ -2957,6 +3009,87 @@ body.dragging-card #trash-zone {
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--modal-shadow);
+}
+
+/* The task's details: a read-only look at one card, wider than the small dialogs
+   because it holds a description. Long ones scroll inside it. */
+#detail-modal {
+  width: min(420px, calc(100% - 40px));
+  max-height: calc(100% - 40px);
+  background: var(--modal-bg);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--modal-shadow);
+  cursor: auto;
+}
+
+#detail-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#detail-status {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-transform: var(--heading-transform);
+  letter-spacing: var(--heading-tracking);
+}
+
+#detail-close {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#detail-close:hover {
+  color: var(--text);
+  background: var(--btn-bg-hover);
+}
+
+#detail-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+#detail-modal.completed #detail-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+#detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  /* The text can be selected and copied here, unlike on the card. */
+  user-select: text;
+}
+
+#detail-body .card-desc {
+  font-size: 12px;
+}
+
+.detail-empty {
+  font-size: 11.5px;
+  color: var(--text-muted);
 }
 
 #confirm-message,
