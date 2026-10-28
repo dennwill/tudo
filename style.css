@@ -1511,9 +1511,24 @@ body {
 }
 
 /* The panel while it belongs to one day. */
-.up-add {
+.up-add-row {
   flex-shrink: 0;
-  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Both buttons are hidden outside a day, and then the row has nothing to hold. */
+.up-add-row:not(:has(.up-add:not([hidden]))) {
+  display: none;
+}
+
+.up-add {
+  flex: 1 1 70px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   height: 24px;
   border-color: var(--accent);
   background: var(--accent-glow);
@@ -1817,6 +1832,24 @@ body {
   color: var(--danger);
 }
 
+/* Events: the accent edge sets them apart from tasks at a glance. */
+.cal-task.event,
+.up-task.event,
+.day-task.event {
+  border-left: 3px solid var(--accent);
+}
+
+.cal-task.past,
+.day-task.past {
+  opacity: 0.6;
+}
+
+.event-location {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 .cal-undated {
   flex-shrink: 0;
   font-size: 10px;
@@ -1902,6 +1935,8 @@ body {
 .dot-doing { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
 .dot-onhold { background: #a78bfa; box-shadow: 0 0 8px rgba(167, 139, 250, 0.4); }
 .dot-done { background: var(--accent); box-shadow: 0 0 8px rgba(94, 106, 210, 0.4); }
+/* An event has no status, so it gets a shape of its own: a diamond in the accent. */
+.dot-event { background: var(--accent-text); border-radius: 1px; transform: rotate(45deg) scale(0.85); }
 
 .count {
   font-family: var(--font-mono);
@@ -2892,7 +2927,8 @@ body.dragging-card #trash-zone {
 }
 
 #confirm-overlay,
-#newtask-overlay {
+#newtask-overlay,
+#event-overlay {
   position: fixed;
   inset: 0;
   background: var(--overlay-bg);
@@ -2904,12 +2940,14 @@ body.dragging-card #trash-zone {
 }
 
 #confirm-overlay[hidden],
-#newtask-overlay[hidden] {
+#newtask-overlay[hidden],
+#event-overlay[hidden] {
   display: none;
 }
 
 #confirm-modal,
-#newtask-modal {
+#newtask-modal,
+#event-modal {
   width: min(280px, calc(100% - 40px));
   background: var(--modal-bg);
   border: var(--border-w) solid var(--border);
@@ -2922,7 +2960,8 @@ body.dragging-card #trash-zone {
 }
 
 #confirm-message,
-#newtask-heading {
+#newtask-heading,
+#event-heading {
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -2943,7 +2982,9 @@ body.dragging-card #trash-zone {
   accent-color: var(--accent);
 }
 
-#newtask-title {
+#newtask-title,
+#event-title,
+#event-location {
   background: var(--card-bg);
   border: var(--border-w) solid var(--border-focus);
   border-radius: var(--radius-sm);
@@ -2954,7 +2995,9 @@ body.dragging-card #trash-zone {
   outline: none;
 }
 
-#newtask-title::placeholder {
+#newtask-title::placeholder,
+#event-title::placeholder,
+#event-location::placeholder {
   color: var(--text-muted);
 }
 
@@ -2970,14 +3013,16 @@ body.dragging-card #trash-zone {
 }
 
 #confirm-actions,
-#newtask-actions {
+#newtask-actions,
+#event-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
 #confirm-actions button,
-#newtask-actions button {
+#newtask-actions button,
+#event-actions button {
   border: var(--border-w) solid var(--border);
   background: var(--btn-bg);
   box-shadow: var(--btn-bevel);
@@ -2992,7 +3037,8 @@ body.dragging-card #trash-zone {
 }
 
 #confirm-actions button:hover,
-#newtask-actions button:hover {
+#newtask-actions button:hover,
+#event-actions button:hover {
   border-color: rgba(255, 255, 255, 0.25);
   background: var(--btn-bg-hover);
 }
@@ -3004,6 +3050,51 @@ body.dragging-card #trash-zone {
 
 #newtask-actions button#newtask-add:hover {
   border-color: var(--accent);
+}
+
+#event-actions button#event-save,
+#event-actions button#event-save:hover {
+  border-color: var(--accent);
+}
+
+#event-actions button#event-save {
+  background: var(--accent-glow);
+}
+
+/* Delete sits at the far left, away from Cancel and Save. */
+#event-actions button#event-delete {
+  margin-right: auto;
+  color: var(--danger);
+}
+
+#event-actions button[hidden] {
+  display: none;
+}
+
+.event-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.event-row[hidden] {
+  display: none;
+}
+
+.event-row-label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* The reminder controls are the board editor's; stacked the same way here. */
+#event-remind {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#event-remind .remind-select {
+  width: 100%;
 }
 
 #confirm-actions button#confirm-delete {

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added events, a second kind of entry beside tasks: click a day on the calendar and press Add event to give it a title, a start and end time (or tick All day), a location and an optional reminder. Events live on the calendar only, marked with a diamond and an accent edge in the month grid, Upcoming (until they are over) and a day's panel. Click one to edit or delete it
+- Events sync with other devices through the relay. Older versions of the app and relay ignore them instead of breaking, so update the relay's copy of sync-core.js to carry them
+- The settings of a reminder are now one shared control in the task editor and the event dialog
+
 ## 1.6.1 - 2026-10-15
 
 - Fixed the theme previews in the settings menu running over the edges of their tiles: a preview now sits inside the hover and selected highlight instead of spilling past it

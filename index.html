@@ -178,7 +178,10 @@
         <span class="upcoming-title" id="upcoming-title">Upcoming</span>
         <span class="count" id="upcoming-count">0</span>
       </div>
-      <button type="button" class="dt-btn up-add" id="upcoming-add" hidden>+ Add task</button>
+      <div class="up-add-row">
+        <button type="button" class="dt-btn up-add" id="upcoming-add" hidden>+ Add task</button>
+        <button type="button" class="dt-btn up-add" id="upcoming-add-event" hidden>+ Add event</button>
+      </div>
       <div class="upcoming-list" id="upcoming-list"></div>
     </aside>
   </section>
@@ -192,6 +195,34 @@
       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
     </svg>
     <span>Drop to delete</span>
+  </div>
+
+  <!-- Before the confirm dialog on purpose: both sit at the same z-index, and
+       deleting an event asks for confirmation from inside this one. -->
+  <div id="event-overlay" hidden>
+    <form id="event-modal" role="dialog" aria-modal="true" aria-labelledby="event-heading">
+      <p id="event-heading"></p>
+      <input type="text" id="event-title" placeholder="Event title..." aria-label="Event title" autocomplete="off" />
+      <input type="text" id="event-location" placeholder="Location (optional)" aria-label="Location" autocomplete="off" />
+      <label class="editor-toggle" id="event-allday-label">
+        <input type="checkbox" id="event-allday" />
+        All day
+      </label>
+      <div class="event-row">
+        <span class="event-row-label">Starts</span>
+        <div id="event-start"></div>
+      </div>
+      <div class="event-row" id="event-end-row">
+        <span class="event-row-label">Ends</span>
+        <div id="event-end"></div>
+      </div>
+      <div id="event-remind"></div>
+      <div id="event-actions">
+        <button type="button" id="event-delete" hidden>Delete</button>
+        <button type="button" id="event-cancel">Cancel</button>
+        <button type="submit" id="event-save">Add event</button>
+      </div>
+    </form>
   </div>
 
   <div id="confirm-overlay" hidden>

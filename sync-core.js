@@ -8,7 +8,9 @@
  *
  * THE MODEL
  *
- * A board is a set of tasks. Each task is one *record*:
+ * A board is a set of tasks, plus a fifth list of calendar events that has no
+ * status of its own (it syncs as the status `events`). Each task, and each
+ * event, is one *record*:
  *
  *   { id, s: status, p: position, t: time, c: client, f: { ...fields } }
  *   { id, t, c, d: 1 }                                  <- a deleted task
@@ -38,7 +40,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  var STATUSES = ['todo', 'doing', 'onhold', 'done'];
+  var STATUSES = ['todo', 'doing', 'onhold', 'done', 'events'];
   var IMPORTANCE = ['Not Set', 'Low', 'Medium', 'High'];
   // The task fields that travel. Anything else on a task stays on its device.
   var SYNCED_FIELDS = [
@@ -50,10 +52,18 @@
     'remindOffset',
     'reminderFired',
     'additionalDescription',
+    'end',
+    'allDay',
+    'location',
   ];
+  // The fields only events use. They are left out of a signature while they hold
+  // their default, so a task - which never has them - signs exactly as it did
+  // before they existed, and upgrading doesn't make every task look edited.
+  var EVENT_FIELDS = ['end', 'allDay', 'location'];
 
   var LIMITS = {
     text: 200,
+    location: 200,
     description: 20000,
     remindMax: 60 * 24 * 30,
     // Per room, deleted tasks included - their tombstones are kept for good.
@@ -88,6 +98,7 @@
 
     var due = typeof f.due === 'string' && DUE_RE.test(f.due) && !isNaN(Date.parse(f.due)) ? f.due : null;
     var offset = typeof f.remindOffset === 'number' && isFinite(f.remindOffset) ? Math.round(f.remindOffset) : 0;
+    var end = typeof f.end === 'string' && DUE_RE.test(f.end) && !isNaN(Date.parse(f.end)) ? f.end : null;
 
     return {
       text: text,
@@ -100,6 +111,9 @@
       reminderFired: f.reminderFired === true,
       additionalDescription:
         typeof f.additionalDescription === 'string' ? f.additionalDescription.slice(0, LIMITS.description) : '',
+      end: end,
+      allDay: f.allDay === true,
+      location: typeof f.location === 'string' ? f.location.trim().slice(0, LIMITS.location) : '',
     };
   }
 
@@ -111,7 +125,12 @@
 
   function signature(status, fields) {
     var parts = [status];
-    for (var i = 0; i < SYNCED_FIELDS.length; i++) parts.push(fields[SYNCED_FIELDS[i]]);
+    for (var i = 0; i < SYNCED_FIELDS.length; i++) {
+      var name = SYNCED_FIELDS[i];
+      if (EVENT_FIELDS.indexOf(name) < 0) parts.push(fields[name]);
+      // Named, so a skipped field can't make two different events sign the same.
+      else if (fields[name]) parts.push([name, fields[name]]);
+    }
     return JSON.stringify(parts);
   }
 

@@ -35,7 +35,7 @@ function loadTasks() {
     raw = fs.readFileSync(DATA_FILE, 'utf-8');
   } catch (err) {
     if (err.code !== 'ENOENT') console.error('tudo: failed to read data file:', err);
-    return { todo: [], doing: [], onhold: [], done: [] };
+    return { todo: [], doing: [], onhold: [], done: [], events: [] };
   }
 
   try {
@@ -47,7 +47,7 @@ function loadTasks() {
     } catch (backupErr) {
       console.error('tudo: failed to back up corrupted data file:', backupErr);
     }
-    return { todo: [], doing: [], onhold: [], done: [] };
+    return { todo: [], doing: [], onhold: [], done: [], events: [] };
   }
 }
 
@@ -275,7 +275,7 @@ ipcMain.handle('tasks:load', () => {
     return loadTasks();
   } catch (err) {
     console.error('tudo: unexpected error loading tasks:', err);
-    return { todo: [], doing: [], onhold: [], done: [] };
+    return { todo: [], doing: [], onhold: [], done: [], events: [] };
   }
 });
 ipcMain.handle('tasks:save', (_event, data) => {
