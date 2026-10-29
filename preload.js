@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('tudo', {
   loadTasks: () => ipcRenderer.invoke('tasks:load'),
   saveTasks: (data) => ipcRenderer.invoke('tasks:save', data),
+  loadChangelog: () => ipcRenderer.invoke('changelog:load'),
   loadSync: () => ipcRenderer.invoke('sync:load'),
   saveSyncConfig: (config) => ipcRenderer.invoke('sync:save-config', config),
   saveSyncState: (state) => ipcRenderer.invoke('sync:save-state', state),
@@ -16,6 +17,7 @@ contextBridge.exposeInMainWorld('tudo', {
   onRefreshRequested: (callback) => ipcRenderer.on('app:refresh', () => callback()),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   downloadUpdate: () => ipcRenderer.send('update:download'),
+  cancelUpdate: () => ipcRenderer.send('update:cancel'),
   installUpdate: () => ipcRenderer.send('update:install'),
   onUpdateState: (callback) =>
     ipcRenderer.on('update:state', (_event, state) => callback(state))

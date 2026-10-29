@@ -1,6 +1,6 @@
 {
   "name": "tudo",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "A tiny always-on-top desktop widget with To-do / Doing / On Hold / Done columns",
   "main": "main.js",
   "scripts": {
@@ -35,6 +35,8 @@
       "renderer.js",
       "sync-core.js",
       "sync-client.js",
+      "changelog.js",
+      "CHANGELOG.md",
       "assets/**/*"
     ],
     "win": {
@@ -51,6 +53,7 @@
     }
   },
   "dependencies": {
+    "builder-util-runtime": "9.7.0",
     "electron-updater": "^6.8.9"
   }
 }

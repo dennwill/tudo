@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, Menu, Notification, Tray, screen, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { CancellationToken } = require('builder-util-runtime');
 const path = require('path');
 const fs = require('fs');
 
@@ -7,6 +8,10 @@ const DATA_FILE = path.join(app.getPath('userData'), 'tudo-data.json');
 // Sync keeps its own file, so the tasks file stays exactly as it always was
 // (and still opens in an older version, or on the phone).
 const SYNC_FILE = path.join(app.getPath('userData'), 'tudo-sync.json');
+// Whether there was a saved board when the app started, read before anything can
+// write one. It tells someone updating from someone opening the app for the first
+// time, who has nothing to be told has changed (see changelog.js).
+const hadDataAtLaunch = fs.existsSync(DATA_FILE);
 
 let mainWindow;
 let tray;
@@ -79,6 +84,8 @@ autoUpdater.on('update-not-available', () => {
   setUpdateState({ status: 'latest' });
 });
 autoUpdater.on('download-progress', (progress) => {
+  // A last report can arrive after a cancel: it must not bring the bar back.
+  if (updateState.status !== 'downloading') return;
   setUpdateState({
     status: 'downloading',
     latest: updateState.latest,
@@ -287,6 +294,16 @@ ipcMain.handle('tasks:save', (_event, data) => {
     return { ok: false, error: err.message };
   }
 });
+// The release notes, for the window that shows what changed. The file ships with the app.
+ipcMain.handle('changelog:load', () => {
+  let markdown = '';
+  try {
+    markdown = fs.readFileSync(path.join(__dirname, 'CHANGELOG.md'), 'utf-8');
+  } catch (err) {
+    console.error('tudo: failed to read the changelog:', err);
+  }
+  return { version: app.getVersion(), markdown, hadData: hadDataAtLaunch };
+});
 ipcMain.handle('sync:load', () => {
   const saved = loadSyncFile();
   return {
@@ -324,13 +341,35 @@ ipcMain.handle('update:check', async () => {
   await checkForUpdate();
   return updateState;
 });
+// The download under way, so it can be stopped.
+let downloadToken = null;
+
 ipcMain.on('update:download', () => {
   if (updateState.status !== 'update-available') return;
   setUpdateState({ status: 'downloading', latest: updateState.latest, percent: 0 });
-  autoUpdater.downloadUpdate().catch((err) => {
-    console.error('tudo: update download failed:', err.message);
-    setUpdateState({ status: 'unknown' });
-  });
+
+  const token = new CancellationToken();
+  downloadToken = token;
+  autoUpdater
+    .downloadUpdate(token)
+    .catch((err) => {
+      // Stopping it was the person's choice, not a failure; the cancel has already
+      // put things back.
+      if (token.cancelled) return;
+      console.error('tudo: update download failed:', err.message);
+      setUpdateState({ status: 'unknown' });
+    })
+    .finally(() => {
+      if (downloadToken === token) downloadToken = null;
+    });
+});
+ipcMain.on('update:cancel', () => {
+  if (updateState.status !== 'downloading' || !downloadToken) return;
+  downloadToken.cancel();
+  downloadToken = null;
+  // Back to where it was before the download began: the update is still on offer,
+  // for whenever they change their mind again.
+  setUpdateState({ status: 'update-available', latest: updateState.latest });
 });
 ipcMain.on('update:install', () => {
   if (updateState.status !== 'ready') return;

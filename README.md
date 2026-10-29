@@ -18,10 +18,11 @@ A tiny always-on-top desktop widget for tracking tasks. It stays on top of your 
 - Tick "Remind me" in the editor and choose how far ahead of the due date to be told - at the due time, 5/15/30 minutes, 1 or 2 hours, a day, or a custom number of days, hours and minutes (up to 30 days, 23 hours, 59 minutes, and never more than 30 days in all) - for a desktop notification about that task; move the due date and the reminder moves with it. The main process does the waiting, so reminders still arrive with the window hidden or in the tray, and anything whose time passed while the app was shut fires once on the next launch
 - Live countdown to the due date, which turns red once a task is overdue - the "Show countdown" toggle under the date in the editor hides it per task, leaving just the date
 - Drag a task to the trash zone to delete it, with an optional confirmation step
+- A changelog: the first time you open a new version, a window shows what changed in it - once, however you close it, and skipped versions are included. A fresh install is not shown one. **Changelog** at the bottom of the settings menu lists every release (it reads `CHANGELOG.md`, which ships with the app)
 - Choose from nine themes: Dark Minimalist, Light Minimalist, Neo-Brutalism, Notebook, Terminal, Butter, Night Watch, Glassmorphism, and Windows 2000 - each shown as a small preview of the app in its colours, three across, so you can see it before you pick it
 - Choose from five fonts: Plus Jakarta Sans, Poppins, Inter, Roboto, and Montserrat - the font is a setting of its own rather than part of a theme, so it stays put as you change themes
 - Tray icon to show, hide, or quit the app
-- Checks GitHub releases on launch: the titlebar reads "Latest version" when up to date, or shows an Update button that downloads and installs the new version in place
+- Checks GitHub releases on launch: the titlebar reads "Latest version" when up to date, or shows an Update button that downloads and installs the new version in place. While it downloads the button becomes a progress bar with a cancel button, and cancelling leaves the update on offer for later
 - A **Refresh** button in the titlebar (also **F5** or **Ctrl+R**, and **Refresh** in the tray menu): syncs with the relay now, re-arms reminders and checks for a newer version, with the arrows turning while it works
 - Real-time sync with the Android app and any other device, through your own relay server - see [Sync](#sync)
 - Tasks are saved automatically to a local file, so they persist between restarts

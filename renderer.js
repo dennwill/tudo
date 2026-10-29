@@ -476,6 +476,11 @@ function setupSettingsMenu() {
     btn.setAttribute('aria-expanded', 'false');
   };
 
+  document.getElementById('changelog-nav').addEventListener('click', () => {
+    closePanel();
+    openChangelog('all');
+  });
+
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!panel.hidden) {
@@ -1797,6 +1802,7 @@ async function init() {
   setInterval(updateCountdowns, 1000);
   setupSync();
   setupRefresh();
+  setupChangelog();
 }
 
 function render() {
@@ -3211,6 +3217,137 @@ function setupAddZones() {
   });
 }
 
+/* --------------------------------------------------------------- changelog */
+
+// The release notes are CHANGELOG.md, read by the main process and parsed by
+// changelog.js. The version last seen is kept here, so the "what's new" window
+// comes once per update: see TudoChangelog.decide for who gets it.
+const LAST_SEEN_VERSION_KEY = 'tudo-last-seen-version';
+
+let changelog = { entries: [], version: '' };
+let changelogOpener = null;
+
+// A note is text with `code` spans in it, built as nodes: it is data, never markup.
+function appendInline(parent, text) {
+  text.split('`').forEach((part, i) => {
+    if (!part) return;
+    if (i % 2) {
+      const code = document.createElement('code');
+      code.textContent = part;
+      parent.appendChild(code);
+    } else {
+      parent.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
+function renderChangelogEntries(entries) {
+  const body = document.getElementById('changelog-body');
+  body.replaceChildren();
+
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'changelog-empty';
+    empty.textContent = 'No release notes found';
+    body.appendChild(empty);
+    return;
+  }
+
+  for (const entry of entries) {
+    const section = document.createElement('section');
+    section.className = 'changelog-entry';
+
+    const heading = document.createElement('h3');
+    heading.textContent = `v${entry.version}`;
+    if (entry.date) {
+      const date = document.createElement('span');
+      date.className = 'changelog-date';
+      date.textContent = entry.date;
+      heading.appendChild(date);
+    }
+    section.appendChild(heading);
+
+    const list = document.createElement('ul');
+    for (const note of entry.notes) {
+      const item = document.createElement('li');
+      appendInline(item, note);
+      list.appendChild(item);
+    }
+    section.appendChild(list);
+    body.appendChild(section);
+  }
+  body.scrollTop = 0;
+}
+
+// 'new': what changed since the last visit, with a way on to the rest. 'all':
+// every release, which is what the Settings row opens.
+function openChangelog(mode, entries = changelog.entries) {
+  if (!changelogOpener) changelogOpener = document.activeElement;
+  const isNew = mode === 'new';
+  const title = !isNew
+    ? 'Changelog'
+    : entries.length === 1
+      ? `What's new in v${entries[0].version}`
+      : "What's new";
+
+  document.getElementById('changelog-title').textContent = title;
+  document.getElementById('changelog-all').hidden = !isNew || entries.length >= changelog.entries.length;
+  document.getElementById('changelog-done').textContent = isNew ? 'Got it' : 'Close';
+  renderChangelogEntries(isNew ? entries : changelog.entries);
+  document.getElementById('changelog-overlay').hidden = false;
+  document.getElementById('changelog-done').focus();
+}
+
+function closeChangelog() {
+  document.getElementById('changelog-overlay').hidden = true;
+  if (changelogOpener && changelogOpener.isConnected) changelogOpener.focus();
+  changelogOpener = null;
+}
+
+async function setupChangelog() {
+  const overlay = document.getElementById('changelog-overlay');
+  document.getElementById('changelog-close').addEventListener('click', closeChangelog);
+  document.getElementById('changelog-done').addEventListener('click', closeChangelog);
+  document.getElementById('changelog-all').addEventListener('click', () => openChangelog('all'));
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeChangelog();
+  });
+  // On the document, not the window: clicking its text leaves the focus nowhere
+  // inside it, and Escape should still close it.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !overlay.hidden) {
+      e.stopPropagation();
+      closeChangelog();
+    }
+  });
+
+  let info;
+  try {
+    info = await window.tudo.loadChangelog();
+  } catch {
+    return;
+  }
+  changelog = { entries: TudoChangelog.parse(info.markdown), version: info.version };
+
+  let seen = null;
+  try {
+    seen = localStorage.getItem(LAST_SEEN_VERSION_KEY);
+  } catch {
+    // Without storage it cannot be remembered, so it is not shown: better missed than every launch.
+    return;
+  }
+
+  const { show, record } = TudoChangelog.decide({
+    entries: changelog.entries,
+    seen,
+    current: info.version,
+    hadData: info.hadData,
+  });
+  // Recorded before it is shown, so a window closed unread still counts as seen.
+  if (record && record !== seen) localStorage.setItem(LAST_SEEN_VERSION_KEY, record);
+  if (show.length) openChangelog('new', show);
+}
+
 const UPDATE_RECHECK_MS = 6 * 60 * 60 * 1000;
 
 let updateStatus = 'unknown';
@@ -3218,19 +3355,35 @@ let updateStatus = 'unknown';
 function showUpdateState(state) {
   const label = document.getElementById('version-label');
   const button = document.getElementById('update-btn');
+  const progress = document.getElementById('update-progress');
   updateStatus = state.status;
 
   const asButton = (text, title) => {
     label.hidden = true;
+    progress.hidden = true;
     button.hidden = false;
     button.textContent = text;
     button.title = title;
   };
   const asLabel = (text, title) => {
     button.hidden = true;
+    progress.hidden = true;
     label.hidden = false;
     label.textContent = text;
     label.title = title;
+  };
+  // A bar that fills as the update comes down, with the cancel button beside it.
+  const asProgress = (percent, title) => {
+    label.hidden = true;
+    button.hidden = true;
+    progress.hidden = false;
+    progress.title = title;
+    const value = Math.max(0, Math.min(100, Number(percent) || 0));
+    progress.querySelector('.update-bar-fill').style.width = `${value}%`;
+    progress.querySelector('.update-bar-text').textContent = `Downloading ${value}%`;
+    progress.querySelector('.update-bar').setAttribute('aria-valuenow', String(value));
+    // A fresh download starts with a working cancel, whatever the last one did.
+    document.getElementById('update-cancel').disabled = false;
   };
 
   switch (state.status) {
@@ -3239,8 +3392,7 @@ function showUpdateState(state) {
       asButton(`Update to v${state.latest}`, `You are on v${state.current}. Click to download v${state.latest}.`);
       break;
     case 'downloading':
-      button.disabled = true;
-      asButton(`Downloading ${state.percent ?? 0}%`, `Downloading v${state.latest}...`);
+      asProgress(state.percent ?? 0, `Downloading v${state.latest}...`);
       break;
     case 'ready':
       button.disabled = false;
@@ -3277,6 +3429,12 @@ function setupUpdateCheck() {
     } else if (updateStatus === 'ready') {
       window.tudo.installUpdate();
     }
+  });
+
+  document.getElementById('update-cancel').addEventListener('click', (e) => {
+    // Once is enough: the state that comes back puts the button on screen again.
+    e.currentTarget.disabled = true;
+    window.tudo.cancelUpdate();
   });
 
   window.tudo.onUpdateState(showUpdateState);

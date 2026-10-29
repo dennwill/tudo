@@ -26,6 +26,8 @@
             <button type="button" class="settings-nav-item" data-page="appearance">Appearance</button>
             <button type="button" class="settings-nav-item" id="columns-nav" data-page="columns">Columns</button>
             <button type="button" class="settings-nav-item" data-page="sync">Sync</button>
+            <!-- Not a group: it opens the changelog window rather than a pane of options. -->
+            <button type="button" class="settings-nav-link" id="changelog-nav">Changelog</button>
           </div>
           <div class="settings-pages">
             <div class="settings-page" data-page="appearance" hidden>
@@ -80,6 +82,14 @@
       <span id="sync-dot" class="sync-dot" hidden></span>
       <span id="version-label" class="version-label" hidden></span>
       <button id="update-btn" class="update-btn" hidden></button>
+      <!-- While an update downloads: how far along it is, and a way to stop. -->
+      <div id="update-progress" class="update-progress" hidden>
+        <div class="update-bar" role="progressbar" aria-label="Downloading the update" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="update-bar-fill"></div>
+          <span class="update-bar-text">Downloading 0%</span>
+        </div>
+        <button type="button" id="update-cancel" class="update-cancel" title="Cancel the download" aria-label="Cancel the download">&times;</button>
+      </div>
     </div>
     <div id="window-controls">
       <div class="view-switch">
@@ -237,6 +247,20 @@
     </div>
   </div>
 
+  <div id="changelog-overlay" hidden>
+    <div id="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+      <div id="changelog-head">
+        <span id="changelog-title"></span>
+        <button type="button" id="changelog-close" title="Close" aria-label="Close">&times;</button>
+      </div>
+      <div id="changelog-body"></div>
+      <div id="changelog-actions">
+        <button type="button" id="changelog-all" hidden>All changes</button>
+        <button type="button" id="changelog-done">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div id="confirm-overlay" hidden>
     <div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-message">
       <p id="confirm-message">Delete this task?</p>
@@ -270,6 +294,7 @@
 
   <script src="sync-core.js"></script>
   <script src="sync-client.js"></script>
+  <script src="changelog.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

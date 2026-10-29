@@ -1,14 +1,17 @@
 # Changelog
 
+## 1.7.1 - 2026-10-29
+
+- Added a changelog: after you update, a window shows what changed in the new version, once. Changelog, at the bottom of the settings menu, lists every release
+- While an update downloads, the titlebar shows a progress bar with a cancel button, so you can stop it and decide later. The update stays on offer
+
 ## 1.7.0 - 2026-10-28
 
-- Added events, a second kind of entry beside tasks: click a day on the calendar and press Add event to give it a title, a start and an end (each a date and a time, so an event can run over several days, or tick All day to use just dates), a location and an optional reminder. Moving an event's start moves its end by the same amount. Click an event to edit or delete it
-- Events live on the calendar only. They are filled with a tint of the theme's accent and marked with a small calendar, where tasks stay outlined with their column's dot; a timed event leads with its start time on the grid, and one covering the whole day is a deeper banner. An event that runs over several days appears on each of them, and a day's panel says whether that day is the start, the end or somewhere between. They also show in Upcoming until they are over
-- In a day, events come first - banners, then timed events, then tasks - and the day's panel groups them under Events and Tasks headings
-- Events sync with other devices through the relay. Older versions of the app and relay ignore them instead of breaking, so update the relay's copy of sync-core.js to carry them
-- On the board, clicking a card's title no longer opens the editor: only the pencil does. Clicking anywhere else on a card (not its edit, delete, drag or fold buttons, or a link in its description) opens a details window with the full title, column, due date and countdown, reminder, description and importance - including what a folded card hides. Escape, the close button, or clicking outside closes it. A task changed or deleted on another device updates or closes the window
-- A custom reminder is now set in days, hours and minutes instead of just hours and minutes. Days run from 0 to 30, hours from 0 to 23 and minutes from 0 to 59; a value typed past its limit snaps back to it when you leave the field, and the whole reminder is held to 30 days, as before. Reminders you already have open unchanged: 90 minutes now shows as 0 d, 1 h, 30 m
-- The reminder settings are now one shared control in the task editor and the event dialog
+- Added events: click a day on the calendar and press Add event. An event has a title, a start and an end (dates and times, so it can run over several days) or All day, a location, and an optional reminder
+- Events show only on the calendar. They are tinted with your theme's accent and marked with a small calendar, and each day lists events first, then tasks
+- Events sync with your other devices. Older app and relay versions ignore them, so update the relay's `sync-core.js` too
+- On the board, clicking a card now opens a details window with everything on it, including what a folded card hides. Only the pencil opens the editor
+- Reminders can now be set in days, hours and minutes, up to 30 days ahead. Your existing reminders are unchanged
 
 ## 1.6.1 - 2026-10-15
 
