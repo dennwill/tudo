@@ -1969,9 +1969,31 @@ body {
 }
 
 .event-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
   font-size: 10.5px;
   color: var(--text-muted);
+}
+
+.event-location svg {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  margin-top: 1px;
+}
+
+.event-location span {
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* The description box in the event dialog: the same one a task has, kept to a
+   height that leaves the dialog's other fields in view. */
+#event-description .desc-box {
+  min-height: 56px;
+  max-height: 140px;
+  overflow-y: auto;
 }
 
 .cal-undated {
@@ -3088,6 +3110,9 @@ body.dragging-card #trash-zone {
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--modal-shadow);
+  /* It holds a description now: on a short window, scroll rather than run off it. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 
 /* The task's details: a read-only look at one card, wider than the small dialogs

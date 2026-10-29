@@ -67,6 +67,10 @@ const CALENDAR_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
   <path d="M8 3v4"></path>
   <path d="M16 3v4"></path>
 </svg>`;
+const PIN_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"></path>
+  <circle cx="12" cy="9.5" r="2.5"></circle>
+</svg>`;
 
 let state = { todo: [], doing: [], onhold: [], done: [], events: [] };
 let editingId = null;
@@ -1422,7 +1426,10 @@ function renderDayEvent(event, dayKey) {
   if (event.location) {
     const where = document.createElement('div');
     where.className = 'event-location';
-    where.textContent = event.location;
+    where.innerHTML = PIN_ICON;
+    const place = document.createElement('span');
+    place.textContent = event.location;
+    where.appendChild(place);
     card.appendChild(where);
   }
 
@@ -1433,7 +1440,150 @@ function renderDayEvent(event, dayKey) {
     if (event.reminderFired) reminder.classList.add('fired');
     card.appendChild(reminder);
   }
+
+  if (hasContent(event.additionalDescription)) {
+    const desc = document.createElement('div');
+    desc.className = 'card-desc';
+    desc.innerHTML = event.additionalDescription;
+    desc.querySelectorAll('a[href]').forEach((a) => {
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.tudo.openExternal(a.getAttribute('href'));
+      });
+    });
+    card.appendChild(desc);
+  }
   return card;
+}
+
+/* ------------------------------------------------------- description editor */
+
+// The rich-text box a description is written in - bold, italic, underline and links -
+// for a task and for an event alike. `html` is what it starts with, and `onChange`
+// is handed the markup after every edit.
+function createDescriptionEditor(html, onChange) {
+  const descEditor = document.createElement('div');
+  descEditor.className = 'desc-editor';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'desc-toolbar';
+
+  const descBox = document.createElement('div');
+  descBox.className = 'desc-box';
+  descBox.contentEditable = 'true';
+  descBox.dataset.placeholder = 'Additional description...';
+  descBox.innerHTML = html || '';
+  descBox.addEventListener('input', () => {
+    onChange(descBox.innerHTML);
+  });
+
+  const addToolbarButton = (cmd, label, title, onClick) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `desc-btn desc-btn-${cmd}`;
+    btn.title = title;
+    btn.innerHTML = label;
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', onClick);
+    toolbar.appendChild(btn);
+    return btn;
+  };
+
+  addToolbarButton('bold', '<b>B</b>', 'Bold', () => {
+    descBox.focus();
+    document.execCommand('bold', false, null);
+    onChange(descBox.innerHTML);
+  });
+  addToolbarButton('italic', '<i>I</i>', 'Italic', () => {
+    descBox.focus();
+    document.execCommand('italic', false, null);
+    onChange(descBox.innerHTML);
+  });
+  addToolbarButton('underline', '<u>U</u>', 'Underline', () => {
+    descBox.focus();
+    document.execCommand('underline', false, null);
+    onChange(descBox.innerHTML);
+  });
+
+  // Electron's renderer does not implement window.prompt() (it returns
+  // immediately with no dialog), so the link URL is collected with an
+  // inline form instead of a native prompt.
+  const linkForm = document.createElement('div');
+  linkForm.className = 'desc-link-form';
+  linkForm.hidden = true;
+
+  const linkInput = document.createElement('input');
+  linkInput.type = 'text';
+  linkInput.className = 'desc-link-input';
+  linkInput.placeholder = 'https://example.com';
+
+  const linkConfirm = document.createElement('button');
+  linkConfirm.type = 'button';
+  linkConfirm.className = 'desc-link-confirm';
+  linkConfirm.textContent = 'Add';
+
+  let savedLinkRange = null;
+
+  const cancelLinkForm = () => {
+    linkForm.hidden = true;
+    toolbar.hidden = false;
+    descBox.focus();
+  };
+
+  const confirmLinkForm = () => {
+    let url = linkInput.value.trim();
+    linkForm.hidden = true;
+    toolbar.hidden = false;
+    descBox.focus();
+    if (url) {
+      if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) {
+        url = `https://${url}`;
+      }
+      if (savedLinkRange) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedLinkRange);
+      }
+      document.execCommand('createLink', false, url);
+      onChange(descBox.innerHTML);
+    }
+  };
+
+  linkConfirm.addEventListener('mousedown', (e) => e.preventDefault());
+  linkConfirm.addEventListener('click', confirmLinkForm);
+  linkInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      confirmLinkForm();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelLinkForm();
+    }
+  });
+  linkInput.addEventListener('blur', () => {
+    if (!linkForm.hidden) cancelLinkForm();
+  });
+
+  linkForm.appendChild(linkInput);
+  linkForm.appendChild(linkConfirm);
+
+  addToolbarButton('createLink', LINK_ICON, 'Link', () => {
+    const sel = window.getSelection();
+    savedLinkRange = sel && sel.rangeCount > 0 && descBox.contains(sel.anchorNode)
+      ? sel.getRangeAt(0).cloneRange()
+      : null;
+    toolbar.hidden = true;
+    linkForm.hidden = false;
+    linkInput.value = '';
+    linkInput.focus();
+  });
+
+  descEditor.appendChild(toolbar);
+  descEditor.appendChild(linkForm);
+  descEditor.appendChild(descBox);
+  return descEditor;
 }
 
 /* ------------------------------------------------------------- event dialog */
@@ -1447,6 +1597,7 @@ function openEventDialog({ day, event = null }) {
   const startDay = event ? event.due.slice(0, 10) : day;
   const offset = event ? clampRemindOffset(event.remindOffset) : 0;
   const draft = {
+    additionalDescription: event ? event.additionalDescription || '' : '',
     allDay: event ? event.allDay : false,
     due: event ? event.due : `${startDay}T${DEFAULT_DUE_TIME}`,
     remind: event ? event.remind : false,
@@ -1479,6 +1630,11 @@ function openEventDialog({ day, event = null }) {
   document.getElementById('event-location').value = event ? event.location : '';
   document.getElementById('event-allday').checked = draft.allDay;
   document.getElementById('event-remind').replaceChildren(reminder.toggle, reminder.select, reminder.customRow);
+  document.getElementById('event-description').replaceChildren(
+    createDescriptionEditor(draft.additionalDescription, (html) => {
+      draft.additionalDescription = html;
+    })
+  );
   document.getElementById('event-save').textContent = event ? 'Save' : 'Add event';
   document.getElementById('event-delete').hidden = !event;
 
@@ -1576,6 +1732,7 @@ function saveEventDialog() {
   const fields = {
     text,
     location: document.getElementById('event-location').value.trim(),
+    additionalDescription: draft.additionalDescription,
     allDay: draft.allDay,
     due,
     end,
@@ -1750,6 +1907,7 @@ async function init() {
   for (const event of state[EVENTS]) {
     event.allDay = event.allDay === true;
     event.location = typeof event.location === 'string' ? event.location : '';
+    event.additionalDescription = typeof event.additionalDescription === 'string' ? event.additionalDescription : '';
     // An end only means something after the start. An all-day event keeps one
     // only as the day it finishes on, which must come after the day it starts.
     const hasEnd = typeof event.end === 'string' && !!parseDueValue(event.end);
@@ -2858,125 +3016,9 @@ function renderEditRow(task) {
   const syncRemindRow = reminder.refresh;
 
 
-  const descEditor = document.createElement('div');
-  descEditor.className = 'desc-editor';
-
-  const toolbar = document.createElement('div');
-  toolbar.className = 'desc-toolbar';
-
-  const descBox = document.createElement('div');
-  descBox.className = 'desc-box';
-  descBox.contentEditable = 'true';
-  descBox.dataset.placeholder = 'Additional description...';
-  descBox.innerHTML = draft.additionalDescription || '';
-  descBox.addEventListener('input', () => {
-    draft.additionalDescription = descBox.innerHTML;
+  const descEditor = createDescriptionEditor(draft.additionalDescription, (html) => {
+    draft.additionalDescription = html;
   });
-
-  const addToolbarButton = (cmd, label, title, onClick) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `desc-btn desc-btn-${cmd}`;
-    btn.title = title;
-    btn.innerHTML = label;
-    btn.addEventListener('mousedown', (e) => e.preventDefault());
-    btn.addEventListener('click', onClick);
-    toolbar.appendChild(btn);
-    return btn;
-  };
-
-  addToolbarButton('bold', '<b>B</b>', 'Bold', () => {
-    descBox.focus();
-    document.execCommand('bold', false, null);
-    draft.additionalDescription = descBox.innerHTML;
-  });
-  addToolbarButton('italic', '<i>I</i>', 'Italic', () => {
-    descBox.focus();
-    document.execCommand('italic', false, null);
-    draft.additionalDescription = descBox.innerHTML;
-  });
-  addToolbarButton('underline', '<u>U</u>', 'Underline', () => {
-    descBox.focus();
-    document.execCommand('underline', false, null);
-    draft.additionalDescription = descBox.innerHTML;
-  });
-
-  // Electron's renderer does not implement window.prompt() (it returns
-  // immediately with no dialog), so the link URL is collected with an
-  // inline form instead of a native prompt.
-  const linkForm = document.createElement('div');
-  linkForm.className = 'desc-link-form';
-  linkForm.hidden = true;
-
-  const linkInput = document.createElement('input');
-  linkInput.type = 'text';
-  linkInput.className = 'desc-link-input';
-  linkInput.placeholder = 'https://example.com';
-
-  const linkConfirm = document.createElement('button');
-  linkConfirm.type = 'button';
-  linkConfirm.className = 'desc-link-confirm';
-  linkConfirm.textContent = 'Add';
-
-  let savedLinkRange = null;
-
-  const cancelLinkForm = () => {
-    linkForm.hidden = true;
-    toolbar.hidden = false;
-    descBox.focus();
-  };
-
-  const confirmLinkForm = () => {
-    let url = linkInput.value.trim();
-    linkForm.hidden = true;
-    toolbar.hidden = false;
-    descBox.focus();
-    if (url) {
-      if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) {
-        url = `https://${url}`;
-      }
-      if (savedLinkRange) {
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(savedLinkRange);
-      }
-      document.execCommand('createLink', false, url);
-      draft.additionalDescription = descBox.innerHTML;
-    }
-  };
-
-  linkConfirm.addEventListener('mousedown', (e) => e.preventDefault());
-  linkConfirm.addEventListener('click', confirmLinkForm);
-  linkInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      confirmLinkForm();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelLinkForm();
-    }
-  });
-  linkInput.addEventListener('blur', () => {
-    if (!linkForm.hidden) cancelLinkForm();
-  });
-
-  linkForm.appendChild(linkInput);
-  linkForm.appendChild(linkConfirm);
-
-  addToolbarButton('createLink', LINK_ICON, 'Link', () => {
-    const sel = window.getSelection();
-    savedLinkRange = sel && sel.rangeCount > 0 && descBox.contains(sel.anchorNode)
-      ? sel.getRangeAt(0).cloneRange()
-      : null;
-    toolbar.hidden = true;
-    linkForm.hidden = false;
-    linkInput.value = '';
-    linkInput.focus();
-  });
-
-  descEditor.appendChild(toolbar);
-  descEditor.appendChild(linkForm);
-  descEditor.appendChild(descBox);
 
   const actions = document.createElement('div');
   actions.className = 'card-edit-actions';

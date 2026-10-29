@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.2 - 2026-10-29
+
+- Events can now have a description, written in the same box a task's is - bold, italic, underline and links - and shown on the event's card in the day's list. It syncs with your other devices
+- An event's location now has a small map pin beside it
+
 ## 1.7.1 - 2026-10-29
 
 - Added a changelog: after you update, a window shows what changed in the new version, once. Changelog, at the bottom of the settings menu, lists every release
