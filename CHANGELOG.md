@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.1 - 2026-11-20
+
+- Only one copy of tudo can run at a time. Opening it again - from the Start menu, say, after it came up with Windows - brings the window you already have to the front instead of starting a second copy with a second tray icon. The second copy used to open with your settings gone, showing the defaults, because the first still had them in use
+- Fixed your tasks or sync settings being overwritten with empty ones when the file could not be read for a moment, because another program had it open. The read is now tried again, and if it still fails, nothing is saved over it. A sync setting that can't be read is left alone rather than saved without its key
+- Everything tudo saves is now kept in %APPDATA%	udo, whichever folder the app is started from
+
 ## 1.8.0 - 2026-11-20
 
 - The app now shows a loading screen while it reads your tasks, in place of four empty columns: shimmering placeholders in your own theme, with the columns you have hidden left out, and the calendar's outline if that is where you left off. The real cards then fade in

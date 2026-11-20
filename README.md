@@ -24,7 +24,8 @@ A tiny always-on-top desktop widget for tracking tasks. It stays on top of your 
 - A changelog: the first time you open a new version, a window shows what changed in it - once, however you close it, and skipped versions are included. A fresh install is not shown one. **Changelog** at the bottom of the settings menu lists every release (it reads `CHANGELOG.md`, which ships with the app)
 - Choose from nine themes: Dark Minimalist, Sleek Black, Light Minimalist, Neo-Brutalism, Terminal, Butter, Night Watch, Glassmorphism, and Windows 2000 - each shown as a small preview of the app in its colours, three across, so you can see it before you pick it
 - Choose from five fonts: Plus Jakarta Sans, Poppins, Inter, Roboto, and Montserrat - the font is a setting of its own rather than part of a theme, so it stays put as you change themes
-- Tray icon to show, hide, or quit the app
+- Tray icon to show, hide, or quit the app. Only one copy runs at a time: starting tudo again brings the running window to the front
+- Everything it saves (tasks, sync settings, preferences) lives in `%APPDATA%	udo`; a file that cannot be read is never overwritten with empty defaults
 - Checks GitHub releases on launch: the titlebar reads "Latest version" when up to date, or shows an Update button that downloads and installs the new version in place. While it downloads the button becomes a progress bar with a cancel button, and cancelling leaves the update on offer for later
 - A **Refresh** button in the titlebar (also **F5** or **Ctrl+R**, and **Refresh** in the tray menu): syncs with the relay now, re-arms reminders and checks for a newer version, with the arrows turning while it works
 - Real-time sync with the Android app and any other device, through your own relay server - see [Sync](#sync)
@@ -116,7 +117,7 @@ folder `/docs`. It lives outside `build.files`, so it isn't bundled into the app
 
 ## Project structure
 
-- `main.js` - Electron main process: window setup, tray icon, and saving/loading tasks
+- `main.js` - Electron main process: window setup, single-instance lock, tray icon, and saving/loading tasks
 - `preload.js` - bridges the main process and the renderer
 - `renderer.js` - app logic: rendering tasks, drag and drop, editing, and the sync controls
 - `sync-core.js`, `sync-client.js` - real-time sync: the merge rules and the connection. They are shared **byte for byte** with the Android app (where the originals live, in `tudo-mobile/src/sync`) and, the core only, the relay - edit them there and run `npm run check:sync -- --fix` in `tudo-mobile`

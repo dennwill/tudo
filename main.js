@@ -4,10 +4,25 @@ const { CancellationToken } = require('builder-util-runtime');
 const path = require('path');
 const fs = require('fs');
 
-const DATA_FILE = path.join(app.getPath('userData'), 'tudo-data.json');
+// Everything the app saves - the tasks, the sync settings, and the page's own
+// storage (theme, sound, columns...) - lives under %APPDATA%\tudo. Pinned here so
+// it can never follow the working directory or the install folder, which is not
+// writable under Program Files. Same folder the default name gave, so nothing moves.
+const USER_DATA_DIR = path.join(app.getPath('appData'), 'tudo');
+app.setPath('userData', USER_DATA_DIR);
+
+// Only one copy may run. Chromium keeps its storage (where the page's preferences
+// live) locked to the process that opened it, so a second copy would read none of
+// them and show the defaults, and would add a second tray icon. This has to come
+// before anything below touches a file. The copy that does not get the lock hands
+// over to the first one (see 'second-instance') and leaves.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) app.exit(0);
+
+const DATA_FILE = path.join(USER_DATA_DIR, 'tudo-data.json');
 // Sync keeps its own file, so the tasks file stays exactly as it always was
 // (and still opens in an older version, or on the phone).
-const SYNC_FILE = path.join(app.getPath('userData'), 'tudo-sync.json');
+const SYNC_FILE = path.join(USER_DATA_DIR, 'tudo-sync.json');
 // Whether there was a saved board when the app started, read before anything can
 // write one. It tells someone updating from someone opening the app for the first
 // time, who has nothing to be told has changed (see changelog.js).
@@ -19,50 +34,107 @@ let trayMenu;
 // The window starts on top; the page tells us if its settings say otherwise.
 let alwaysOnTop = true;
 
-function loadSyncFile() {
+// A file another process has open (antivirus, a backup tool, a copy of the app
+// still shutting down) can refuse a read for a moment. Wait a little and try again.
+const TRANSIENT_FS_ERRORS = new Set(['EBUSY', 'EPERM', 'EACCES', 'EMFILE', 'ENFILE']);
+
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+// Returns the file's text, or null if there is no such file. Anything else that
+// goes wrong is thrown: "I could not read it" must never look like "it is empty",
+// or the defaults would be saved over what is really there.
+function readFileStrict(file) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return fs.readFileSync(file, 'utf-8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return null;
+      if (attempt >= 4 || !TRANSIENT_FS_ERRORS.has(err.code)) throw err;
+      sleepSync(50 * (attempt + 1));
+    }
+  }
+}
+
+function backUpCorrupt(file) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(SYNC_FILE, 'utf-8'));
+    fs.copyFileSync(file, `${file}.corrupt-${Date.now()}`);
+  } catch (backupErr) {
+    console.error('tudo: failed to back up corrupted file:', backupErr);
+  }
+}
+
+// Writes through a temporary file so a crash cannot leave half a file behind.
+function writeFileAtomic(file, text) {
+  const tmpFile = `${file}.tmp`;
+  fs.writeFileSync(tmpFile, text);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(tmpFile, file);
+      return;
+    } catch (err) {
+      if (attempt >= 4 || !TRANSIENT_FS_ERRORS.has(err.code)) throw err;
+      sleepSync(50 * (attempt + 1));
+    }
+  }
+}
+
+// Throws if the file is there but cannot be read. A file that is not valid JSON is
+// kept aside as a backup and treated as empty.
+function loadSyncFile() {
+  const raw = readFileStrict(SYNC_FILE);
+  if (raw === null) return {};
+  try {
+    const parsed = JSON.parse(raw);
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch (err) {
-    if (err.code !== 'ENOENT') console.error('tudo: failed to read sync file, starting fresh:', err);
+    console.error('tudo: sync file is corrupted, backing it up:', err);
+    backUpCorrupt(SYNC_FILE);
     return {};
   }
 }
 
 // config (key, server, on/off) and state (what has been synced) are saved on
-// different schedules, so each write keeps the other half as it found it.
+// different schedules, so each write keeps the other half as it found it. If the
+// file cannot be read this throws instead of writing the patch on its own, which
+// would drop the other half (the key!).
 function updateSyncFile(patch) {
-  const tmpFile = `${SYNC_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify({ ...loadSyncFile(), ...patch }, null, 2));
-  fs.renameSync(tmpFile, SYNC_FILE);
+  writeFileAtomic(SYNC_FILE, JSON.stringify({ ...loadSyncFile(), ...patch }, null, 2));
 }
+
+const emptyTasks = () => ({ todo: [], doing: [], onhold: [], done: [], events: [] });
+
+// Set when the saved board exists but could not be read. Until it is read, saving
+// is refused: the page would otherwise write its empty board over the real one.
+let tasksUnreadable = false;
 
 function loadTasks() {
   let raw;
   try {
-    raw = fs.readFileSync(DATA_FILE, 'utf-8');
+    raw = readFileStrict(DATA_FILE);
   } catch (err) {
-    if (err.code !== 'ENOENT') console.error('tudo: failed to read data file:', err);
-    return { todo: [], doing: [], onhold: [], done: [], events: [] };
+    console.error('tudo: failed to read data file, leaving it untouched:', err);
+    tasksUnreadable = true;
+    return emptyTasks();
   }
+  tasksUnreadable = false;
+  if (raw === null) return emptyTasks();
 
   try {
     return JSON.parse(raw);
   } catch (err) {
     console.error('tudo: data file is corrupted, backing it up and starting fresh:', err);
-    try {
-      fs.copyFileSync(DATA_FILE, `${DATA_FILE}.corrupt-${Date.now()}`);
-    } catch (backupErr) {
-      console.error('tudo: failed to back up corrupted data file:', backupErr);
-    }
-    return { todo: [], doing: [], onhold: [], done: [], events: [] };
+    backUpCorrupt(DATA_FILE);
+    return emptyTasks();
   }
 }
 
 function saveTasks(data) {
-  const tmpFile = `${DATA_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2));
-  fs.renameSync(tmpFile, DATA_FILE);
+  if (tasksUnreadable) {
+    throw new Error('the saved tasks could not be read, so they were left as they are');
+  }
+  writeFileAtomic(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 // Updates come from the GitHub releases configured in package.json's build.publish
@@ -210,7 +282,22 @@ function createTray() {
   });
 }
 
+// Someone started the app again while it was already running (from the Start menu,
+// say, after it came up with Windows). Bring the window we have back, rather than
+// opening a second one.
+app.on('second-instance', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    if (app.isReady()) createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+});
+
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
+
   // Windows will not show a toast unless the process claims an AppUserModelID
   // that matches a Start Menu shortcut. The installer creates one from
   // build.appId in package.json, so this has to be the same string - without it
@@ -358,7 +445,13 @@ ipcMain.handle('changelog:load', () => {
   return { version: app.getVersion(), markdown, hadData: hadDataAtLaunch };
 });
 ipcMain.handle('sync:load', () => {
-  const saved = loadSyncFile();
+  let saved;
+  try {
+    saved = loadSyncFile();
+  } catch (err) {
+    console.error('tudo: failed to read sync settings:', err);
+    saved = {};
+  }
   return {
     config: saved.config && typeof saved.config === 'object' ? saved.config : null,
     state: saved.state && typeof saved.state === 'object' ? saved.state : null,
