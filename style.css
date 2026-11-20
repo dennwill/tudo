@@ -64,6 +64,41 @@
   --colored-text-shadow: none;
 }
 
+/* ---------- Sleek Black ---------- */
+/* Dark Minimalist taken down to true black: the page, the panels and the menus
+   are all near-black, so the cards read as thin lines and a faint lit edge
+   rather than as lighter slabs. Same shapes and the same quiet glow at the top;
+   only the accent is brighter, since it has to carry more on black. */
+[data-theme="sleek-black"] {
+  --bg: #000000;
+  --card-bg: rgba(12, 12, 14, 0.82);
+  --card-hover: rgba(20, 20, 24, 0.94);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-focus: rgba(111, 123, 242, 0.55);
+  --text: #f4f5f6;
+  --text-muted: #7b8089;
+  --accent: #6f7bf2;
+  --accent-glow: rgba(111, 123, 242, 0.12);
+
+  --surface: rgba(6, 6, 8, 0.6);
+  --bg-image: radial-gradient(circle at 50% -25%, var(--accent-glow), transparent 65%);
+
+  /* A hairline of light along the top edge of a card, as if it caught the glow. */
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --card-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 24px rgba(0, 0, 0, 0.7);
+
+  --btn-bg: rgba(255, 255, 255, 0.05);
+  --btn-bg-hover: rgba(255, 255, 255, 0.09);
+
+  --overlay-bg: rgba(0, 0, 0, 0.72);
+  --footer-bg: rgba(255, 255, 255, 0.03);
+  --toolbar-bg: rgba(255, 255, 255, 0.02);
+  --modal-bg: #0a0a0c;
+  --modal-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 16px 40px rgba(0, 0, 0, 0.8);
+  --color-scheme: dark;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+}
+
 /* ---------- Light Minimalist ---------- */
 [data-theme="light-minimalist"] {
   --bg: #f5f6f8;
@@ -135,66 +170,6 @@
   --color-scheme: light;
   --titlebar-bg: #ff3d81;
   --scrollbar-thumb: #000000;
-}
-
-/* ---------- Notebook ---------- */
-/* Cream paper with faint blue ruled lines, blue-black ink and pencil-grey
-   borders. Cards are slips of paper: soft shadows, small corners, and a slight
-   tilt when lifted. The body font stays whatever the Font list says; only the
-   colours and the surfaces are the theme's. */
-[data-theme="notebook"] {
-  --bg: #f4eedb;
-  --card-bg: #fffef8;
-  --card-hover: #ffffff;
-  --border: rgba(70, 58, 32, 0.22);
-  --border-focus: rgba(47, 85, 164, 0.6);
-  --text: #26252e;
-  --text-muted: #70695a;
-  --accent: #2f55a4;
-  --accent-glow: rgba(47, 85, 164, 0.13);
-
-  --font-mono: 'Courier New', monospace;
-  --heading-transform: none;
-  --heading-tracking: 0;
-
-  --radius-lg: 6px;
-  --radius-md: 5px;
-  --radius-sm: 4px;
-  --radius-xs: 3px;
-
-  --border-w: 1px;
-  /* Paper over paper: translucent enough that the ruling shows through. */
-  --surface: rgba(255, 253, 243, 0.72);
-  --surface-blur: none;
-  --bg-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 27px,
-    rgba(92, 132, 190, 0.26) 27px,
-    rgba(92, 132, 190, 0.26) 28px
-  );
-
-  --card-shadow: 0 1px 2px rgba(80, 60, 20, 0.14), 0 3px 8px rgba(80, 60, 20, 0.08);
-  --card-shadow-hover: 0 8px 18px rgba(80, 60, 20, 0.18);
-  --card-hover-transform: translateY(-2px) rotate(-0.35deg);
-
-  --btn-bg: rgba(70, 58, 32, 0.06);
-  --btn-bg-hover: rgba(47, 85, 164, 0.12);
-  --btn-bevel: inset 0 -1px 0 rgba(70, 58, 32, 0.12);
-
-  --overlay-bg: rgba(70, 58, 32, 0.4);
-  --footer-bg: rgba(70, 58, 32, 0.05);
-  --toolbar-bg: rgba(70, 58, 32, 0.04);
-  --modal-bg: #fffdf4;
-  --modal-shadow: 0 14px 34px rgba(60, 45, 15, 0.28);
-  --color-scheme: light;
-  --titlebar-bg: #ece4cc;
-  --scrollbar-thumb: rgba(70, 58, 32, 0.28);
-
-  /* Red pen for late work, blue ink where the accent has to be read. */
-  --danger: #b3261e;
-  --danger-rgb: 179, 38, 30;
-  --accent-text: #2f55a4;
 }
 
 /* ---------- Terminal ---------- */
@@ -280,19 +255,19 @@ html[data-theme="terminal"] .card-edit-save:hover {
 }
 
 /* ---------- Butter ---------- */
-/* Butter yellow and cream with cocoa-brown ink, polka dots on the page, and
+/* Soft butter cream with cocoa-brown ink, polka dots on the page, and
    round, chunky shapes with a squashed-down shadow under everything, like a soft
    toy. Cards bounce up a little when pointed at. */
 [data-theme="butter"] {
-  --bg: #ffeea0;
-  --card-bg: #fffbe3;
+  --bg: #fbf1cd;
+  --card-bg: #fffcee;
   --card-hover: #ffffff;
-  --border: rgba(133, 88, 20, 0.42);
-  --border-focus: #e39a00;
+  --border: rgba(133, 88, 20, 0.38);
+  --border-focus: #dc9410;
   --text: #4a3416;
   --text-muted: #86652f;
-  --accent: #f5a300;
-  --accent-glow: rgba(245, 163, 0, 0.24);
+  --accent: #ec9f12;
+  --accent-glow: rgba(236, 159, 18, 0.2);
 
   --heading-transform: none;
   --heading-tracking: 0;
@@ -303,30 +278,30 @@ html[data-theme="terminal"] .card-edit-save:hover {
   --radius-xs: 9px;
 
   --border-w: 2px;
-  --surface: rgba(255, 249, 214, 0.78);
+  --surface: rgba(255, 251, 235, 0.72);
   --surface-blur: none;
   --bg-image:
-    radial-gradient(circle at 9px 9px, rgba(255, 196, 40, 0.38) 5px, transparent 5.5px),
-    radial-gradient(circle at 27px 27px, rgba(255, 196, 40, 0.38) 5px, transparent 5.5px);
+    radial-gradient(circle at 9px 9px, rgba(236, 196, 96, 0.24) 5px, transparent 5.5px),
+    radial-gradient(circle at 27px 27px, rgba(236, 196, 96, 0.24) 5px, transparent 5.5px);
   /* Both dots sit in one 36px tile, which repeats. */
   --bg-size: 36px 36px;
 
-  --card-shadow: 0 4px 0 rgba(214, 150, 20, 0.5);
-  --card-shadow-hover: 0 7px 0 rgba(214, 150, 20, 0.5);
+  --card-shadow: 0 4px 0 rgba(196, 150, 60, 0.36);
+  --card-shadow-hover: 0 7px 0 rgba(196, 150, 60, 0.36);
   --card-hover-transform: translateY(-3px) scale(1.012);
 
-  --btn-bg: #fff2bd;
-  --btn-bg-hover: #ffdf6b;
-  --btn-bevel: inset 0 -3px 0 rgba(214, 150, 20, 0.4);
+  --btn-bg: #fbf0cd;
+  --btn-bg-hover: #f6e09a;
+  --btn-bevel: inset 0 -3px 0 rgba(196, 150, 60, 0.3);
 
   --overlay-bg: rgba(110, 72, 12, 0.42);
-  --footer-bg: rgba(255, 196, 40, 0.2);
-  --toolbar-bg: rgba(255, 196, 40, 0.15);
-  --modal-bg: #fffbe6;
-  --modal-shadow: 0 6px 0 rgba(214, 150, 20, 0.6), 0 18px 32px rgba(110, 72, 12, 0.25);
+  --footer-bg: rgba(236, 196, 96, 0.14);
+  --toolbar-bg: rgba(236, 196, 96, 0.1);
+  --modal-bg: #fffcf0;
+  --modal-shadow: 0 6px 0 rgba(196, 150, 60, 0.45), 0 18px 32px rgba(110, 72, 12, 0.22);
   --color-scheme: light;
-  --titlebar-bg: #ffd84a;
-  --scrollbar-thumb: #e8b84a;
+  --titlebar-bg: #f4e0a0;
+  --scrollbar-thumb: #dcc080;
 
   --danger: #c42a30;
   --danger-rgb: 196, 42, 48;
@@ -1224,6 +1199,113 @@ body {
   opacity: 0.6;
 }
 
+/* ---------- Preferences (inside the settings panel) ---------- */
+
+/* A label over the control it names, for the choices that are not a tickbox. */
+.pref-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 5px;
+  font-size: 10.5px;
+  font-family: var(--font-body);
+  color: var(--text-muted);
+}
+
+.pref-select {
+  width: 100%;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border-focus);
+  border-radius: var(--radius-xs);
+  padding: 4px 6px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+
+.pref-select:focus-visible {
+  border-color: var(--accent);
+}
+
+.pref-select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The sound choice follows the note about the default reminder, which is not about it. */
+.pref-note + .pref-field {
+  margin-top: 6px;
+}
+
+/* A select with a button beside it. */
+.pref-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.pref-row .pref-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.sound-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  padding: 0;
+  border: var(--border-w) solid var(--border);
+  background: var(--btn-bg);
+  box-shadow: var(--btn-bevel);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sound-play svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
+.sound-play:hover:not(:disabled),
+.sound-play:focus-visible {
+  background: var(--btn-bg-hover);
+  color: var(--accent);
+  outline: none;
+}
+
+.sound-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pref-note {
+  padding: 0 5px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* A switch that cannot be used here, like the one for starting with the computer
+   in a copy that is not installed. */
+.settings-option.is-disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-option.is-disabled:hover {
+  background: none;
+}
+
+/* AM and PM are only there on a 12-hour clock (see Preferences > Clock). */
+html[data-clock12="0"] .time-ampm {
+  display: none;
+}
+
 /* ---------- Sync (inside the settings panel) ---------- */
 
 .sync-status {
@@ -2086,6 +2168,114 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* The sort button and the count, together on the right of the heading. */
+.col-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.col-sort {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  /* Quiet until the column is pointed at, unless it is doing something. */
+  opacity: 0.45;
+  transition: opacity 0.12s ease;
+}
+
+.col-sort svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.col:hover .col-sort,
+.col-sort:focus-visible,
+.col-sort[aria-expanded="true"],
+.col-sort.active {
+  opacity: 1;
+}
+
+.col-sort:hover,
+.col-sort[aria-expanded="true"] {
+  background: var(--btn-bg-hover);
+  color: var(--text);
+}
+
+.col-sort.active {
+  color: var(--accent);
+}
+
+.col-sort:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 1px;
+}
+
+#sort-menu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  background: var(--modal-bg);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--modal-shadow);
+}
+
+#sort-menu[hidden] {
+  display: none;
+}
+
+.sort-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 5px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  font-size: 11px;
+  font-family: var(--font-body);
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sort-item:hover,
+.sort-item:focus-visible {
+  background: var(--btn-bg-hover);
+  outline: none;
+}
+
+.sort-item.selected {
+  color: var(--accent);
+}
+
+/* Room for the tick whether or not there is one, so the labels line up. */
+.sort-check {
+  display: flex;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+.sort-check svg {
+  width: 11px;
+  height: 11px;
 }
 
 .card-stack {
@@ -3475,4 +3665,170 @@ body.dragging-card #trash-zone {
 
 #toast[hidden] {
   display: none;
+}
+
+/* ---------- Loading ---------- */
+
+/* Until the saved tasks have been read the board is a set of grey stand-ins for
+   cards, each with a pale band sweeping across it, in the colours of the saved
+   theme. Both the stand-ins and the early settings that dress them are
+   index.html's; renderer.js clears the lists when it draws the real cards and
+   then takes is-loading off the body. */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
+  background: var(--card-bg);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--card-shadow);
+  list-style: none;
+  flex-shrink: 0;
+}
+
+.sk-line {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  height: 9px;
+  width: 78%;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text-muted) 24%, transparent);
+}
+
+.sk-line.sk-mid { width: 60%; }
+.sk-line.sk-short { width: 42%; height: 7px; }
+.sk-line.sk-pill { width: 34px; height: 14px; align-self: flex-end; border-radius: var(--radius-xs); }
+
+.sk-line::after,
+.sk-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--text) 20%, transparent),
+    transparent
+  );
+  animation: sk-sweep 1.4s ease-in-out infinite;
+}
+
+/* Each column a beat behind the one before it, so the sweep travels across. */
+.col:nth-child(2) .sk-line::after { animation-delay: 0.12s; }
+.col:nth-child(3) .sk-line::after { animation-delay: 0.24s; }
+.col:nth-child(4) .sk-line::after { animation-delay: 0.36s; }
+
+@keyframes sk-sweep {
+  to { transform: translateX(100%); }
+}
+
+/* Once loaded the stand-ins are gone from the lists; the calendar's goes with
+   everything else that is only for loading. */
+.cal-skeleton {
+  display: none;
+}
+
+/* What the early script in index.html found: which view and which columns the
+   app is going to open with. Only while loading - afterwards the page itself
+   keeps track, and these would be left saying what was true at launch. */
+html[data-start-hide-todo] body.is-loading .col[data-status="todo"],
+html[data-start-hide-doing] body.is-loading .col[data-status="doing"],
+html[data-start-hide-onhold] body.is-loading .col[data-status="onhold"],
+html[data-start-hide-done] body.is-loading .col[data-status="done"] {
+  display: none;
+}
+
+body.is-loading .count {
+  visibility: hidden;
+}
+
+/* Nothing can be added to a list that has not been read yet. */
+body.is-loading .add-issue-zone {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+html[data-start-view="calendar"] body.is-loading .board {
+  display: none;
+}
+
+html[data-start-view="calendar"] body.is-loading .cal-skeleton {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  min-height: 0;
+}
+
+.sk-pane {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* Seven days across and five weeks down, as faint lines: the shape of a month
+   without anything in it. */
+.sk-month {
+  flex: 1;
+  background-image:
+    linear-gradient(90deg, var(--border) 1px, transparent 1px),
+    linear-gradient(var(--border) 1px, transparent 1px);
+  background-size: calc(100% / 7) 100%, 100% 20%;
+}
+
+.sk-side { flex: 0 0 196px; }
+
+/* A panel is big, so its band is narrow and faint; the cards' lines can take a
+   brighter one. */
+.sk-pane::after {
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    color-mix(in srgb, var(--text) 8%, transparent) 50%,
+    transparent 75%
+  );
+}
+
+/* Its icon is put in by the page once it has started, so until then it would be
+   an empty button. */
+body.is-loading #view-btn {
+  visibility: hidden;
+}
+
+/* The real content arrives as one soft step rather than all at once. Only the
+   first draw: it is on the body for a moment and then taken off. */
+body.just-loaded .card-stack > .card,
+body.just-loaded .calendar:not([hidden]) {
+  animation: tudo-arrive 0.32s ease-out backwards;
+}
+
+body.just-loaded .card-stack > .card:nth-child(2) { animation-delay: 0.04s; }
+body.just-loaded .card-stack > .card:nth-child(3) { animation-delay: 0.08s; }
+body.just-loaded .card-stack > .card:nth-child(4) { animation-delay: 0.12s; }
+body.just-loaded .card-stack > .card:nth-child(n+5) { animation-delay: 0.16s; }
+
+@keyframes tudo-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-line::after,
+  .sk-pane::after {
+    animation: none;
+    transform: none;
+    opacity: 0.5;
+  }
+
+  body.just-loaded .card-stack > .card,
+  body.just-loaded .calendar:not([hidden]) {
+    animation: none;
+  }
 }

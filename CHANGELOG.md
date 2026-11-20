@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0 - 2026-11-20
+
+- The app now shows a loading screen while it reads your tasks, in place of four empty columns: shimmering placeholders in your own theme, with the columns you have hidden left out, and the calendar's outline if that is where you left off. The real cards then fade in
+- Added the Sleek Black theme: Dark Minimalist taken down to true black - the page, the panels and the menus - with the same smooth shapes, a faint lit edge on each card, and a brighter accent to stand out on the black
+- Butter is softer: a cream with a hint of butter in place of a yellow page, with the dots, shadows and tints toned down to match. The accent is still golden
+- Removed the Notebook theme. Anyone who was using it is moved to Light Minimalist
+- Reminders now play a sound. Pick which one in Settings > Preferences: Chime, Bell, Ding, Marimba, Rise, Pop or Beep, or keep your system's own notification sound, or have none. The play button beside the list lets you hear it first. The choice is remembered on this device
+- Every column on the board has a sort button beside its count. Sort a column by due date (soonest or latest first), by title (A to Z or Z to A) or by importance (high to low or low to high), and it stays in order as you add and change cards. Cards with no due date or importance go to the bottom. Sorting only changes how the column is shown: Manual order puts the cards back the way you dragged them. In a sorted column a card can't be dragged to a place, but it can still be dragged in from another column
+- Added Preferences to the settings menu. It holds: Ask before deleting (turns the delete confirmation back on after you have ticked "Don't ask again"); Keep on top of other windows (now remembered, and in step with the tray menu); Start with Windows (in the installed app); Show importance on folded cards; Remind me by default, with how long before, for new tasks and events with a due date (a card gets it when it is given its first due date); Clock, to force a 12-hour or 24-hour clock everywhere; and Week starts on, for the calendar and the date picker
+
 ## 1.7.2 - 2026-10-29
 
 - Events can now have a description, written in the same box a task's is - bold, italic, underline and links - and shown on the event's card in the day's list. It syncs with your other devices

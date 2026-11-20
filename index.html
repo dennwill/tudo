@@ -7,8 +7,37 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <!-- Runs before anything is drawn. The page is built by renderer.js, which only
+       gets going once the saved tasks have been read, so until then the window
+       would show the default theme, the board with every column, and the board
+       even for someone who left off on the calendar. This reads the three settings
+       that decide what the loading screen looks like, so it looks like their app. -->
+  <script>
+    (function () {
+      try {
+        var root = document.documentElement;
+        var theme = localStorage.getItem('tudo-theme');
+        if (theme) root.dataset.theme = theme;
+        root.dataset.startView = localStorage.getItem('tudo-view') === 'calendar' ? 'calendar' : 'board';
+
+        var all = ['todo', 'doing', 'onhold', 'done'];
+        var visible = all;
+        var saved = JSON.parse(localStorage.getItem('tudo-visible-columns'));
+        if (Array.isArray(saved)) {
+          var kept = all.filter(function (id) { return saved.indexOf(id) !== -1; });
+          if (kept.length) visible = kept;
+        }
+        all.forEach(function (id) {
+          if (visible.indexOf(id) === -1) root.setAttribute('data-start-hide-' + id, '');
+        });
+        root.style.setProperty('--col-count', visible.length);
+      } catch (err) {
+        // Nothing saved, or storage is off: the loading screen is the default one.
+      }
+    })();
+  </script>
 </head>
-<body>
+<body class="is-loading">
   <header id="titlebar">
     <div class="title-area">
       <img class="project-icon" src="assets/icon.png" alt="tudo" />
@@ -25,6 +54,7 @@
           <div class="settings-nav">
             <button type="button" class="settings-nav-item" data-page="appearance">Appearance</button>
             <button type="button" class="settings-nav-item" id="columns-nav" data-page="columns">Columns</button>
+            <button type="button" class="settings-nav-item" data-page="preferences">Preferences</button>
             <button type="button" class="settings-nav-item" data-page="sync">Sync</button>
             <!-- Not a group: it opens the changelog window rather than a pane of options. -->
             <button type="button" class="settings-nav-link" id="changelog-nav">Changelog</button>
@@ -38,6 +68,9 @@
             </div>
             <div class="settings-page" id="columns-group" data-page="columns" hidden>
               <div id="columns-options"></div>
+            </div>
+            <div class="settings-page" data-page="preferences" hidden>
+              <div id="preferences-options"></div>
             </div>
             <div class="settings-page" id="sync-group" data-page="sync" hidden>
               <div id="sync-status" class="sync-status" role="status"></div>
@@ -115,7 +148,11 @@
         <div class="col-title"><span class="icon-dot dot-todo"></span> To-do</div>
         <span class="count" id="count-todo">0</span>
       </div>
-      <ul class="card-stack" id="list-todo" data-status="todo"></ul>
+      <ul class="card-stack" id="list-todo" data-status="todo">
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line"></span><span class="sk-line sk-short"></span></li>
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line sk-mid"></span><span class="sk-line sk-short"></span><span class="sk-line sk-pill"></span></li>
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line"></span></li>
+      </ul>
       <div class="add-issue-zone" data-status="todo">
         <button class="new-btn">+ Add issue</button>
         <form class="add-form" hidden>
@@ -129,7 +166,10 @@
         <div class="col-title"><span class="icon-dot dot-doing"></span> Doing</div>
         <span class="count" id="count-doing">0</span>
       </div>
-      <ul class="card-stack" id="list-doing" data-status="doing"></ul>
+      <ul class="card-stack" id="list-doing" data-status="doing">
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line sk-mid"></span><span class="sk-line sk-short"></span><span class="sk-line sk-pill"></span></li>
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line"></span><span class="sk-line sk-short"></span></li>
+      </ul>
       <div class="add-issue-zone" data-status="doing">
         <button class="new-btn">+ Add issue</button>
         <form class="add-form" hidden>
@@ -143,7 +183,10 @@
         <div class="col-title"><span class="icon-dot dot-onhold"></span> On Hold</div>
         <span class="count" id="count-onhold">0</span>
       </div>
-      <ul class="card-stack" id="list-onhold" data-status="onhold"></ul>
+      <ul class="card-stack" id="list-onhold" data-status="onhold">
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line"></span><span class="sk-line sk-short"></span></li>
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line sk-mid"></span></li>
+      </ul>
       <div class="add-issue-zone" data-status="onhold">
         <button class="new-btn">+ Add issue</button>
         <form class="add-form" hidden>
@@ -157,7 +200,9 @@
         <div class="col-title"><span class="icon-dot dot-done"></span> Done</div>
         <span class="count" id="count-done">0</span>
       </div>
-      <ul class="card-stack" id="list-done" data-status="done"></ul>
+      <ul class="card-stack" id="list-done" data-status="done">
+        <li class="skeleton-card" aria-hidden="true"><span class="sk-line"></span></li>
+      </ul>
       <div class="add-issue-zone" data-status="done">
         <button class="new-btn">+ Add issue</button>
         <form class="add-form" hidden>
@@ -195,6 +240,13 @@
       <div class="upcoming-list" id="upcoming-list"></div>
     </aside>
   </section>
+
+  <!-- What stands in for the calendar while it loads. CSS shows it only then, and
+       only if the calendar is the view being loaded. -->
+  <div class="cal-skeleton" aria-hidden="true">
+    <div class="sk-pane sk-month"></div>
+    <div class="sk-pane sk-side"></div>
+  </div>
 
   <div id="trash-zone">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -11,6 +11,12 @@ contextBridge.exposeInMainWorld('tudo', {
   close: () => ipcRenderer.send('window:close'),
   openExternal: (url) => ipcRenderer.send('shell:open-external', url),
   setReminders: (reminders) => ipcRenderer.send('reminders:set', reminders),
+  setAlwaysOnTop: (on) => ipcRenderer.send('prefs:always-on-top', on),
+  onAlwaysOnTopChanged: (callback) =>
+    ipcRenderer.on('prefs:always-on-top', (_event, on) => callback(on)),
+  getLoginItem: () => ipcRenderer.invoke('prefs:login-item'),
+  setLoginItem: (on) => ipcRenderer.invoke('prefs:set-login-item', on),
+  setToastSound: (on) => ipcRenderer.send('reminders:toast-sound', on),
   onReminderFired: (callback) =>
     ipcRenderer.on('reminder:fired', (_event, id) => callback(id)),
   // The tray menu's Refresh, for when the window is hidden.

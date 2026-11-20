@@ -15,6 +15,9 @@ const hadDataAtLaunch = fs.existsSync(DATA_FILE);
 
 let mainWindow;
 let tray;
+let trayMenu;
+// The window starts on top; the page tells us if its settings say otherwise.
+let alwaysOnTop = true;
 
 function loadSyncFile() {
   try {
@@ -130,13 +133,16 @@ function createWindow() {
     frame: false,
     transparent: true,
     resizable: true,
-    alwaysOnTop: true,
+    alwaysOnTop,
     skipTaskbar: false,
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // A reminder's sound is played by the page, often with nobody having touched
+      // it since it opened, which Chromium would otherwise refuse to play.
+      autoplayPolicy: 'no-user-gesture-required',
       // Closing the window only hides it, and sync keeps its connection in the
       // page. Chromium would slow a hidden page's timers to a crawl, and with
       // them the reconnecting and the heartbeat.
@@ -149,6 +155,19 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+// `fromTray` is for a change made in the tray menu, which the page has to hear
+// about so that its setting (and what is remembered) follows; one that came from
+// the page needs no echo.
+function setAlwaysOnTop(on, fromTray = false) {
+  alwaysOnTop = on === true;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setAlwaysOnTop(alwaysOnTop);
+    if (fromTray) mainWindow.webContents.send('prefs:always-on-top', alwaysOnTop);
+  }
+  const item = trayMenu && trayMenu.getMenuItemById('always-on-top');
+  if (item) item.checked = alwaysOnTop;
 }
 
 function createTray() {
@@ -172,14 +191,17 @@ function createTray() {
       }
     },
     {
+      id: 'always-on-top',
       label: 'Always on top',
       type: 'checkbox',
-      checked: true,
-      click: (item) => mainWindow && mainWindow.setAlwaysOnTop(item.checked)
+      checked: alwaysOnTop,
+      // The settings menu has the same switch, so it is told when this one moves.
+      click: (item) => setAlwaysOnTop(item.checked, true)
     },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() }
   ]);
+  trayMenu = menu;
   tray.setToolTip('tudo');
   tray.setContextMenu(menu);
   tray.on('click', () => {
@@ -224,6 +246,10 @@ let reminderTimers = [];
 // the same one does not fire it twice.
 const firedReminders = new Set();
 const reminderKey = (reminder) => `${reminder.id}@${reminder.at}`;
+// Whether the toast makes its own sound. The sounds on offer in the settings menu
+// are played by the page, so the toast keeps quiet unless "System default" is
+// the one chosen; otherwise the two would play over each other.
+let toastSound = true;
 
 function showReminder(reminder) {
   firedReminders.add(reminderKey(reminder));
@@ -233,6 +259,7 @@ function showReminder(reminder) {
     const notification = new Notification({
       title: reminder.title,
       body: reminder.body || 'Reminder',
+      silent: !toastSound,
       ...(fs.existsSync(iconPath) ? { icon: iconPath } : {}),
     });
     notification.on('click', () => {
@@ -271,6 +298,32 @@ function scheduleReminders(reminders) {
   // comes straight back as another reminders:set.
   for (const reminder of missed) showReminder(reminder);
 }
+
+ipcMain.on('prefs:always-on-top', (_event, on) => setAlwaysOnTop(on));
+
+// Starting with the computer. The setting lives in the system, not in the app's
+// own files, so it is read back from there. It is only offered for an installed
+// app: from source it would register Electron itself as the thing to start.
+function loginItemState() {
+  const supported = app.isPackaged && (process.platform === 'win32' || process.platform === 'darwin');
+  return { supported, enabled: supported && app.getLoginItemSettings().openAtLogin === true };
+}
+
+ipcMain.handle('prefs:login-item', () => loginItemState());
+ipcMain.handle('prefs:set-login-item', (_event, on) => {
+  if (loginItemState().supported) {
+    try {
+      app.setLoginItemSettings({ openAtLogin: on === true });
+    } catch (err) {
+      console.error('tudo: failed to change the start-with-computer setting:', err);
+    }
+  }
+  return loginItemState();
+});
+
+ipcMain.on('reminders:toast-sound', (_event, on) => {
+  toastSound = on === true;
+});
 
 ipcMain.on('reminders:set', (_event, reminders) => {
   if (!Array.isArray(reminders)) return;

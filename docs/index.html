@@ -279,10 +279,12 @@
   .demo-badge-medium { color: #d97706; background: rgba(217, 119, 6, 0.14); }
   .demo-badge-low { color: #059669; background: rgba(5, 150, 105, 0.12); }
   [data-demo-theme="dark-minimalist"] .demo-badge-medium,
+  [data-demo-theme="sleek-black"] .demo-badge-medium,
   [data-demo-theme="terminal"] .demo-badge-medium,
   [data-demo-theme="night-watch"] .demo-badge-medium,
   [data-demo-theme="glassmorphism"] .demo-badge-medium { color: #fbbf24; background: rgba(251, 191, 36, 0.14); }
   [data-demo-theme="dark-minimalist"] .demo-badge-low,
+  [data-demo-theme="sleek-black"] .demo-badge-low,
   [data-demo-theme="terminal"] .demo-badge-low,
   [data-demo-theme="night-watch"] .demo-badge-low,
   [data-demo-theme="glassmorphism"] .demo-badge-low { color: #34d399; background: rgba(52, 211, 153, 0.14); }
@@ -305,6 +307,11 @@
     --demo-border: rgba(255, 255, 255, 0.1); --demo-text: #f7f8f8; --demo-text-muted: #8a8f98;
     --demo-radius: 8px; --demo-border-w: 1px;
   }
+  .demo-stage[data-demo-theme="sleek-black"] {
+    --demo-bg: #000000; --demo-card: rgba(12, 12, 14, 0.9); --demo-titlebar: #0a0a0c;
+    --demo-border: rgba(255, 255, 255, 0.09); --demo-text: #f4f5f6; --demo-text-muted: #7b8089;
+    --demo-radius: 8px; --demo-border-w: 1px;
+  }
   .demo-stage[data-demo-theme="light-minimalist"] {
     --demo-bg: #f5f6f8; --demo-card: #ffffff; --demo-titlebar: #ffffff;
     --demo-border: rgba(0, 0, 0, 0.1); --demo-text: #16181d; --demo-text-muted: #6b7280;
@@ -314,18 +321,6 @@
     --demo-bg: #f4f1e8; --demo-card: #ffffff; --demo-titlebar: #ff3d81;
     --demo-border: #000000; --demo-text: #0a0a0a; --demo-text-muted: #3a3a3a;
     --demo-titlebar-text: #ffffff; --demo-radius: 0px; --demo-border-w: 2px;
-  }
-  .demo-stage[data-demo-theme="notebook"] {
-    --demo-bg: #f4eedb; --demo-card: #fffef8; --demo-titlebar: #ece4cc;
-    --demo-border: rgba(70, 58, 32, 0.22); --demo-text: #26252e; --demo-text-muted: #70695a;
-    --demo-radius: 5px; --demo-border-w: 1px;
-    --demo-bg-image: repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent 27px,
-      rgba(92, 132, 190, 0.26) 27px,
-      rgba(92, 132, 190, 0.26) 28px
-    );
   }
   .demo-stage[data-demo-theme="terminal"] {
     --demo-bg: #050805; --demo-card: rgba(10, 18, 11, 0.92); --demo-titlebar: #080d09;
@@ -342,13 +337,13 @@
       );
   }
   .demo-stage[data-demo-theme="butter"] {
-    --demo-bg: #ffeea0; --demo-card: #fffbe3; --demo-titlebar: #ffd84a;
-    --demo-border: rgba(133, 88, 20, 0.42); --demo-text: #4a3416; --demo-text-muted: #86652f;
+    --demo-bg: #fbf1cd; --demo-card: #fffcee; --demo-titlebar: #f4e0a0;
+    --demo-border: rgba(133, 88, 20, 0.38); --demo-text: #4a3416; --demo-text-muted: #86652f;
     --demo-radius: 18px; --demo-border-w: 2px;
     /* Both dots sit in one 36px tile, which repeats. */
     --demo-bg-image:
-      radial-gradient(circle at 9px 9px, rgba(255, 196, 40, 0.38) 5px, transparent 5.5px),
-      radial-gradient(circle at 27px 27px, rgba(255, 196, 40, 0.38) 5px, transparent 5.5px);
+      radial-gradient(circle at 9px 9px, rgba(236, 196, 96, 0.24) 5px, transparent 5.5px),
+      radial-gradient(circle at 27px 27px, rgba(236, 196, 96, 0.24) 5px, transparent 5.5px);
     --demo-bg-size: 36px 36px;
   }
   /* The forest along the bottom is an SVG in the app's assets folder; this page
@@ -417,16 +412,16 @@
   .swatch-preview span { flex: 1; }
   .swatch[data-theme-btn="dark-minimalist"] .swatch-preview span:nth-child(1) { background: #0b0c0e; }
   .swatch[data-theme-btn="dark-minimalist"] .swatch-preview span:nth-child(2) { background: #5e6ad2; }
+  .swatch[data-theme-btn="sleek-black"] .swatch-preview span:nth-child(1) { background: #000000; }
+  .swatch[data-theme-btn="sleek-black"] .swatch-preview span:nth-child(2) { background: #6f7bf2; }
   .swatch[data-theme-btn="light-minimalist"] .swatch-preview span:nth-child(1) { background: #f5f6f8; }
   .swatch[data-theme-btn="light-minimalist"] .swatch-preview span:nth-child(2) { background: #5e6ad2; }
   .swatch[data-theme-btn="neo-brutalism"] .swatch-preview span:nth-child(1) { background: #f4f1e8; }
   .swatch[data-theme-btn="neo-brutalism"] .swatch-preview span:nth-child(2) { background: #ff3d81; }
-  .swatch[data-theme-btn="notebook"] .swatch-preview span:nth-child(1) { background: #f4eedb; }
-  .swatch[data-theme-btn="notebook"] .swatch-preview span:nth-child(2) { background: #2f55a4; }
   .swatch[data-theme-btn="terminal"] .swatch-preview span:nth-child(1) { background: #050805; }
   .swatch[data-theme-btn="terminal"] .swatch-preview span:nth-child(2) { background: #39ff6a; }
-  .swatch[data-theme-btn="butter"] .swatch-preview span:nth-child(1) { background: #ffeea0; }
-  .swatch[data-theme-btn="butter"] .swatch-preview span:nth-child(2) { background: #f5a300; }
+  .swatch[data-theme-btn="butter"] .swatch-preview span:nth-child(1) { background: #fbf1cd; }
+  .swatch[data-theme-btn="butter"] .swatch-preview span:nth-child(2) { background: #ec9f12; }
   .swatch[data-theme-btn="night-watch"] .swatch-preview span:nth-child(1) { background: linear-gradient(180deg, #070b18, #1a2038); }
   .swatch[data-theme-btn="night-watch"] .swatch-preview span:nth-child(2) { background: #f2a14a; }
   .swatch[data-theme-btn="glassmorphism"] .swatch-preview span:nth-child(1) { background: linear-gradient(135deg, #ff7ac2, #70c4ff); }
@@ -466,21 +461,21 @@
   .look-card[data-look="dark-minimalist"] .look-swatch span:nth-child(1) { background: #0b0c0e; }
   .look-card[data-look="dark-minimalist"] .look-swatch span:nth-child(2) { background: #1c1f26; }
   .look-card[data-look="dark-minimalist"] .look-swatch span:nth-child(3) { background: #5e6ad2; }
+  .look-card[data-look="sleek-black"] .look-swatch span:nth-child(1) { background: #000000; }
+  .look-card[data-look="sleek-black"] .look-swatch span:nth-child(2) { background: #0c0c0e; }
+  .look-card[data-look="sleek-black"] .look-swatch span:nth-child(3) { background: #6f7bf2; }
   .look-card[data-look="light-minimalist"] .look-swatch span:nth-child(1) { background: #f5f6f8; }
   .look-card[data-look="light-minimalist"] .look-swatch span:nth-child(2) { background: #ffffff; }
   .look-card[data-look="light-minimalist"] .look-swatch span:nth-child(3) { background: #5e6ad2; }
   .look-card[data-look="neo-brutalism"] .look-swatch span:nth-child(1) { background: #f4f1e8; }
   .look-card[data-look="neo-brutalism"] .look-swatch span:nth-child(2) { background: #ffffff; }
   .look-card[data-look="neo-brutalism"] .look-swatch span:nth-child(3) { background: #ff3d81; }
-  .look-card[data-look="notebook"] .look-swatch span:nth-child(1) { background: #f4eedb; }
-  .look-card[data-look="notebook"] .look-swatch span:nth-child(2) { background: #fffef8; }
-  .look-card[data-look="notebook"] .look-swatch span:nth-child(3) { background: #2f55a4; }
   .look-card[data-look="terminal"] .look-swatch span:nth-child(1) { background: #050805; }
   .look-card[data-look="terminal"] .look-swatch span:nth-child(2) { background: #0a120b; }
   .look-card[data-look="terminal"] .look-swatch span:nth-child(3) { background: #39ff6a; }
-  .look-card[data-look="butter"] .look-swatch span:nth-child(1) { background: #ffeea0; }
-  .look-card[data-look="butter"] .look-swatch span:nth-child(2) { background: #fffbe3; }
-  .look-card[data-look="butter"] .look-swatch span:nth-child(3) { background: #f5a300; }
+  .look-card[data-look="butter"] .look-swatch span:nth-child(1) { background: #fbf1cd; }
+  .look-card[data-look="butter"] .look-swatch span:nth-child(2) { background: #fffcee; }
+  .look-card[data-look="butter"] .look-swatch span:nth-child(3) { background: #ec9f12; }
   .look-card[data-look="night-watch"] .look-swatch span:nth-child(1) { background: linear-gradient(180deg, #070b18, #1a2038); }
   .look-card[data-look="night-watch"] .look-swatch span:nth-child(2) { background: #2a2030; }
   .look-card[data-look="night-watch"] .look-swatch span:nth-child(3) { background: #f2a14a; }
@@ -587,7 +582,7 @@
     <div class="metabar-brand">
       <img class="metabar-icon" src="data:image/png;base64,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" alt="" />
       <span class="metabar-name">tudo</span>
-      <span class="metabar-version">v1.7.2</span>
+      <span class="metabar-version">v1.8.0</span>
     </div>
     <nav class="metabar-links">
       <a href="#themes">Themes</a>
@@ -671,14 +666,14 @@
           <button class="swatch" data-theme-btn="dark-minimalist" aria-pressed="true">
             <span class="swatch-preview"><span></span><span></span></span> Dark Minimalist
           </button>
+          <button class="swatch" data-theme-btn="sleek-black" aria-pressed="false">
+            <span class="swatch-preview"><span></span><span></span></span> Sleek Black
+          </button>
           <button class="swatch" data-theme-btn="light-minimalist" aria-pressed="false">
             <span class="swatch-preview"><span></span><span></span></span> Light Minimalist
           </button>
           <button class="swatch" data-theme-btn="neo-brutalism" aria-pressed="false">
             <span class="swatch-preview"><span></span><span></span></span> Neo-Brutalism
-          </button>
-          <button class="swatch" data-theme-btn="notebook" aria-pressed="false">
-            <span class="swatch-preview"><span></span><span></span></span> Notebook
           </button>
           <button class="swatch" data-theme-btn="terminal" aria-pressed="false">
             <span class="swatch-preview"><span></span><span></span></span> Terminal
@@ -710,6 +705,11 @@
           <div class="look-name">Dark Minimalist</div>
           <div class="look-desc">The default. Quiet, translucent, easy on the eyes.</div>
         </div>
+        <div class="look-card" data-look="sleek-black">
+          <div class="look-swatch"><span></span><span></span><span></span></div>
+          <div class="look-name">Sleek Black</div>
+          <div class="look-desc">True black with a hairline edge. Deeper than the default, just as smooth.</div>
+        </div>
         <div class="look-card" data-look="light-minimalist">
           <div class="look-swatch"><span></span><span></span><span></span></div>
           <div class="look-name">Light Minimalist</div>
@@ -720,11 +720,6 @@
           <div class="look-name">Neo-Brutalism</div>
           <div class="look-desc">Thick borders, hard shadows, no apologies.</div>
         </div>
-        <div class="look-card" data-look="notebook">
-          <div class="look-swatch"><span></span><span></span><span></span></div>
-          <div class="look-name">Notebook</div>
-          <div class="look-desc">Ruled paper and blue ink, with a slight tilt as a card lifts.</div>
-        </div>
         <div class="look-card" data-look="terminal">
           <div class="look-swatch"><span></span><span></span><span></span></div>
           <div class="look-name">Terminal</div>
@@ -733,7 +728,7 @@
         <div class="look-card" data-look="butter">
           <div class="look-swatch"><span></span><span></span><span></span></div>
           <div class="look-name">Butter</div>
-          <div class="look-desc">Butter yellow and cocoa ink, round and chunky, dotted all over.</div>
+          <div class="look-desc">Soft butter cream and cocoa ink, round and chunky, dotted all over.</div>
         </div>
         <div class="look-card" data-look="night-watch">
           <div class="look-swatch"><span></span><span></span><span></span></div>
@@ -795,6 +790,18 @@
           <h3>Pick your typeface</h3>
           <p>Five fonts, from Plus Jakarta Sans to Montserrat, set apart from the theme so it survives a reskin.</p>
         </div>
+        <div class="feature">
+          <h3>Sort any column</h3>
+          <p>Order a column by due date, title, or importance, and it stays in order as you add cards. Manual order puts your own arrangement back.</p>
+        </div>
+        <div class="feature">
+          <h3>A sound for every reminder</h3>
+          <p>Choose from seven built-in sounds, keep Windows' own, or go silent, and play each one before you pick it.</p>
+        </div>
+        <div class="feature">
+          <h3>Set it up your way</h3>
+          <p>Preferences for a default reminder, a 12 or 24-hour clock, the first day of the week, and starting with Windows.</p>
+        </div>
       </div>
     </section>
 
@@ -803,6 +810,21 @@
         <h2>What's new.</h2>
       </div>
       <div class="changelog">
+        <div class="release">
+          <div class="release-meta">
+            <span class="release-version">v1.8.0</span>
+            <span class="release-date">2026-11-20</span>
+          </div>
+          <ul class="release-notes">
+            <li>A loading screen replaces the empty columns while your tasks are read: shimmering placeholders in your own theme, and the real cards fade in</li>
+            <li>Added the Sleek Black theme: Dark Minimalist taken down to true black, with the same smooth shapes</li>
+            <li>Butter is softer: a cream with a hint of butter in place of a yellow page, with the dots and shadows toned down to match</li>
+            <li>Removed the Notebook theme. Anyone who was using it is moved to Light Minimalist</li>
+            <li>Reminders now play a sound. Choose Chime, Bell, Ding, Marimba, Rise, Pop or Beep, keep your system's own notification sound, or have none, in Settings &gt; Preferences</li>
+            <li>Every column on the board can be sorted by due date, title or importance, in either direction. Sorting only changes how a column is shown, so Manual order brings your own arrangement back</li>
+            <li>Added Preferences to the settings menu: ask before deleting, keep on top of other windows, start with Windows, show importance on folded cards, a default reminder for new tasks and events, a 12 or 24-hour clock, and which day the week starts on</li>
+          </ul>
+        </div>
         <div class="release">
           <div class="release-meta">
             <span class="release-version">v1.7.2</span>

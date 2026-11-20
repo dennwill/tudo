@@ -191,9 +191,9 @@ const SKIP_DELETE_CONFIRM_KEY = 'tudo-skip-delete-confirm';
 
 const THEMES = [
   { id: 'dark-minimalist', label: 'Dark Minimalist' },
+  { id: 'sleek-black', label: 'Sleek Black' },
   { id: 'light-minimalist', label: 'Light Minimalist' },
   { id: 'neo-brutalism', label: 'Neo-Brutalism' },
-  { id: 'notebook', label: 'Notebook' },
   { id: 'terminal', label: 'Terminal' },
   { id: 'butter', label: 'Butter' },
   { id: 'night-watch', label: 'Night Watch' },
@@ -207,8 +207,14 @@ function applyTheme(id) {
   localStorage.setItem(THEME_KEY, id);
 }
 
-// Themes that have been renamed; anyone who had picked one keeps it.
-const RENAMED_THEMES = { 'dark-fantasy': 'night-watch', nailong: 'butter' };
+// Themes that have been renamed or removed; anyone who had picked one is moved
+// to what replaced it.
+// Notebook was retired; Light Minimalist is the nearest thing to paper.
+const RENAMED_THEMES = {
+  'dark-fantasy': 'night-watch',
+  nailong: 'butter',
+  notebook: 'light-minimalist',
+};
 const savedTheme = localStorage.getItem(THEME_KEY);
 applyTheme(RENAMED_THEMES[savedTheme] || savedTheme || THEMES[0].id);
 
@@ -339,6 +345,135 @@ function setupFontOptions() {
   }
 }
 
+/* ------------------------------------------------------------ reminder sounds */
+
+// What plays when a reminder goes off. The sounds are made here with the Web
+// Audio API rather than shipped as files, so there is nothing to load and nothing
+// that can go missing. Each is a list of tones: a pitch (and optionally the
+// pitch it slides to), when it starts, how long it rings, and how loud.
+// "System default" is not made here - it leaves the toast's own sound switched
+// on - and "None" leaves everything quiet.
+const REMINDER_SOUNDS = [
+  { id: 'chime', label: 'Chime', tones: [
+    { freq: 880, at: 0, dur: 0.7, gain: 0.5 },
+    { freq: 1318.5, at: 0.16, dur: 1.0, gain: 0.5 },
+  ] },
+  { id: 'bell', label: 'Bell', tones: [
+    { freq: 660, at: 0, dur: 1.8, gain: 0.5 },
+    { freq: 1320, at: 0, dur: 1.2, gain: 0.22 },
+    { freq: 1980, at: 0, dur: 0.7, gain: 0.12 },
+  ] },
+  { id: 'ding', label: 'Ding', tones: [
+    { freq: 1046.5, at: 0, dur: 0.8, gain: 0.55, type: 'triangle' },
+  ] },
+  { id: 'marimba', label: 'Marimba', tones: [
+    { freq: 523.25, at: 0, dur: 0.35, gain: 0.55, type: 'triangle' },
+    { freq: 659.25, at: 0.13, dur: 0.35, gain: 0.55, type: 'triangle' },
+    { freq: 783.99, at: 0.26, dur: 0.6, gain: 0.55, type: 'triangle' },
+  ] },
+  { id: 'rise', label: 'Rise', tones: [
+    { freq: 440, at: 0, dur: 0.3, gain: 0.45 },
+    { freq: 554.37, at: 0.11, dur: 0.3, gain: 0.45 },
+    { freq: 659.25, at: 0.22, dur: 0.3, gain: 0.45 },
+    { freq: 880, at: 0.33, dur: 0.7, gain: 0.45 },
+  ] },
+  { id: 'pop', label: 'Pop', tones: [
+    { freq: 900, to: 300, at: 0, dur: 0.18, gain: 0.6 },
+  ] },
+  { id: 'beep', label: 'Beep', tones: [
+    { freq: 1000, at: 0, dur: 0.12, gain: 0.18, type: 'square' },
+    { freq: 1000, at: 0.2, dur: 0.12, gain: 0.18, type: 'square' },
+    { freq: 1000, at: 0.4, dur: 0.12, gain: 0.18, type: 'square' },
+  ] },
+];
+const SOUND_SYSTEM = 'system';
+const SOUND_NONE = 'none';
+// The choices in the order the menu lists them.
+const SOUND_CHOICES = [
+  ...REMINDER_SOUNDS,
+  { id: SOUND_SYSTEM, label: 'System default' },
+  { id: SOUND_NONE, label: 'None' },
+];
+const SOUND_KEY = 'tudo-reminder-sound';
+// A reminder that has been missed while the app was shut goes off along with any
+// others like it as soon as it opens; one sound for the lot, not a chord of them.
+const SOUND_MIN_GAP_MS = 1500;
+
+let audioContext = null;
+let lastSoundAt = 0;
+
+function loadReminderSound() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem(SOUND_KEY);
+  } catch {
+    // Storage may be unavailable; the default will do.
+  }
+  return SOUND_CHOICES.some((s) => s.id === saved) ? saved : REMINDER_SOUNDS[0].id;
+}
+
+let reminderSound = loadReminderSound();
+
+// Tells the main process whether the toast is to make a sound of its own.
+function applyReminderSound(id) {
+  reminderSound = id;
+  try {
+    localStorage.setItem(SOUND_KEY, id);
+  } catch {
+    // Not saved; it still applies until the app closes.
+  }
+  window.tudo.setToastSound(id === SOUND_SYSTEM);
+}
+
+function playTones(tones) {
+  if (!audioContext) audioContext = new AudioContext();
+  // A context made before anything has been clicked may start out suspended.
+  if (audioContext.state === 'suspended') audioContext.resume();
+
+  const start = audioContext.currentTime + 0.02;
+  for (const tone of tones) {
+    const osc = audioContext.createOscillator();
+    const amp = audioContext.createGain();
+    const from = start + tone.at;
+    const to = from + tone.dur;
+
+    osc.type = tone.type || 'sine';
+    osc.frequency.setValueAtTime(tone.freq, from);
+    if (tone.to) osc.frequency.exponentialRampToValueAtTime(tone.to, to);
+
+    // A short fade in, so it does not click, and a long fade out, so it rings off.
+    amp.gain.setValueAtTime(0.0001, from);
+    amp.gain.exponentialRampToValueAtTime(tone.gain, from + 0.012);
+    amp.gain.exponentialRampToValueAtTime(0.0001, to);
+
+    osc.connect(amp);
+    amp.connect(audioContext.destination);
+    osc.start(from);
+    osc.stop(to + 0.05);
+  }
+}
+
+// `preview` skips the gap between sounds, so trying them out one after another
+// plays every one.
+function playReminderSound(id = reminderSound, preview = false) {
+  const sound = REMINDER_SOUNDS.find((s) => s.id === id);
+  if (!sound) return;
+
+  const now = Date.now();
+  if (!preview && now - lastSoundAt < SOUND_MIN_GAP_MS) return;
+  lastSoundAt = now;
+
+  try {
+    playTones(sound.tones);
+  } catch (err) {
+    console.error('tudo: could not play the reminder sound:', err);
+  }
+}
+
+const PLAY_ICON = `<svg viewBox="0 0 24 24" fill="currentColor">
+  <path d="M8 5v14l11-7z"></path>
+</svg>`;
+
 const VISIBLE_COLUMNS_KEY = 'tudo-visible-columns';
 
 function loadVisibleColumns() {
@@ -402,6 +537,544 @@ function setupColumnsOptions() {
 
   syncColumnsPanel();
   applyColumnVisibility();
+}
+
+/* ------------------------------------------------------------- preferences */
+
+// Settings > Preferences: the choices that are about how the app behaves rather
+// than how it looks. Kept on this device, like the theme and the font.
+const PREF_ALWAYS_ON_TOP_KEY = 'tudo-always-on-top';
+const PREF_REMIND_KEY = 'tudo-default-remind';
+const PREF_CLOCK_KEY = 'tudo-clock';
+const PREF_WEEK_START_KEY = 'tudo-week-start';
+const PREF_FOLDED_IMPORTANCE_KEY = 'tudo-folded-importance';
+const CLOCK_CHOICES = [
+  { value: 'system', label: 'System default' },
+  { value: '12', label: '12-hour' },
+  { value: '24', label: '24-hour' },
+];
+// 0 is Sunday, as in Date.getDay().
+const WEEK_START_CHOICES = [
+  { value: 'system', label: 'System default' },
+  { value: '6', label: 'Saturday' },
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+];
+const DEFAULT_REMIND_OFFSET = 15;
+
+function readPref(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writePref(key, value) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    // Not saved; it still applies until the app closes.
+  }
+}
+
+function loadDefaultRemind() {
+  let saved = null;
+  try {
+    saved = JSON.parse(readPref(PREF_REMIND_KEY));
+  } catch {
+    saved = null;
+  }
+  const offset = saved && isRemindPreset(saved.offset) ? saved.offset : DEFAULT_REMIND_OFFSET;
+  return { on: !!saved && saved.on === true, offset };
+}
+
+// A saved choice only counts if it is still one of the choices.
+function loadChoice(key, choices) {
+  const saved = readPref(key);
+  return choices.some((c) => c.value === saved) ? saved : 'system';
+}
+
+const prefs = {
+  // On unless it has been turned off, so that nothing changes for anyone who
+  // has never opened this page.
+  alwaysOnTop: readPref(PREF_ALWAYS_ON_TOP_KEY) !== '0',
+  defaultRemind: loadDefaultRemind(),
+  clock: loadChoice(PREF_CLOCK_KEY, CLOCK_CHOICES),
+  weekStart: loadChoice(PREF_WEEK_START_KEY, WEEK_START_CHOICES),
+  foldedImportance: readPref(PREF_FOLDED_IMPORTANCE_KEY) === '1',
+};
+
+const SYSTEM_12H =
+  new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 === true;
+
+function use12h() {
+  if (prefs.clock === '12') return true;
+  if (prefs.clock === '24') return false;
+  return SYSTEM_12H;
+}
+
+// Added to every formatted time, so a chosen clock reaches all of them. With
+// nothing chosen it adds nothing and the system's own clock is used.
+function clockOptions() {
+  if (prefs.clock === 'system') return {};
+  return { hourCycle: prefs.clock === '12' ? 'h12' : 'h23' };
+}
+
+// The fields of a reminder that is on from the start, or the fields of none. A
+// reminder that would already have gone off is left off: it would fire the
+// moment the card was saved, for a task that has only just been made.
+function defaultReminderFor(due, allDay = false) {
+  const { on, offset } = prefs.defaultRemind;
+  const none = { remind: false, remindOffset: 0 };
+  if (!on || !due) return none;
+  const at = reminderTimeFor({ remind: true, due, allDay, remindOffset: offset });
+  return at > Date.now() ? { remind: true, remindOffset: offset } : none;
+}
+
+function setupPreferences() {
+  const container = document.getElementById('preferences-options');
+  const syncers = [];
+
+  const heading = (text, first = false) => {
+    const el = document.createElement('div');
+    el.className = 'settings-heading' + (first ? '' : ' settings-subheading');
+    el.textContent = text;
+    container.appendChild(el);
+  };
+
+  // `onChange` gets the new state; `getValue` is read again whenever the page is
+  // opened, in case something else has changed it.
+  const checkbox = (label, getValue, onChange) => {
+    const { row, input } = settingsOption({
+      type: 'checkbox',
+      value: label,
+      label,
+      checked: getValue(),
+      onChange: (box) => onChange(box.checked),
+    });
+    container.appendChild(row);
+    syncers.push(() => {
+      input.checked = getValue();
+    });
+    return { row, input };
+  };
+
+  const select = (label, choices, getValue, onChange) => {
+    const field = document.createElement('label');
+    field.className = 'pref-field';
+    const text = document.createElement('span');
+    text.textContent = label;
+    const control = document.createElement('select');
+    control.className = 'pref-select';
+    for (const choice of choices) {
+      const option = document.createElement('option');
+      option.value = String(choice.value);
+      option.textContent = choice.label;
+      control.appendChild(option);
+    }
+    control.value = String(getValue());
+    control.addEventListener('change', () => onChange(control.value));
+    field.append(text, control);
+    container.appendChild(field);
+    syncers.push(() => {
+      control.value = String(getValue());
+    });
+    return control;
+  };
+
+  heading('General', true);
+  checkbox(
+    'Ask before deleting',
+    () => readPref(SKIP_DELETE_CONFIRM_KEY) !== '1',
+    // Ticked is the original behaviour, so it clears the "don't ask again" flag.
+    (ask) => writePref(SKIP_DELETE_CONFIRM_KEY, ask ? null : '1')
+  );
+  checkbox(
+    'Keep on top of other windows',
+    () => prefs.alwaysOnTop,
+    (on) => {
+      prefs.alwaysOnTop = on;
+      writePref(PREF_ALWAYS_ON_TOP_KEY, on ? null : '0');
+      window.tudo.setAlwaysOnTop(on);
+    }
+  );
+
+  // Whether this is on is the system's to say, so it is asked for rather than
+  // remembered, and it is only on offer in the installed app.
+  const login = checkbox(
+    'Start with Windows',
+    () => false,
+    async (on) => {
+      login.input.disabled = true;
+      applyLoginItem(await window.tudo.setLoginItem(on));
+    }
+  );
+  const applyLoginItem = (state) => {
+    login.input.checked = !!state && state.enabled;
+    login.input.disabled = !state || !state.supported;
+    login.row.title = login.input.disabled ? 'Only available in the installed app' : '';
+    login.row.classList.toggle('is-disabled', login.input.disabled);
+  };
+  // Replaces the sync the checkbox was given: this one asks the system.
+  syncers[syncers.length - 1] = async () => {
+    try {
+      applyLoginItem(await window.tudo.getLoginItem());
+    } catch {
+      applyLoginItem(null);
+    }
+  };
+
+  heading('Cards');
+  checkbox(
+    'Show importance on folded cards',
+    () => prefs.foldedImportance,
+    (on) => {
+      prefs.foldedImportance = on;
+      writePref(PREF_FOLDED_IMPORTANCE_KEY, on ? '1' : null);
+      render();
+    }
+  );
+
+  heading('Reminders');
+  const saveDefaultRemind = () => {
+    writePref(PREF_REMIND_KEY, JSON.stringify(prefs.defaultRemind));
+    remindWhen.disabled = !prefs.defaultRemind.on;
+  };
+  checkbox(
+    'Remind me by default',
+    () => prefs.defaultRemind.on,
+    (on) => {
+      prefs.defaultRemind.on = on;
+      saveDefaultRemind();
+    }
+  );
+  const remindWhen = select(
+    'When',
+    REMIND_PRESETS.map((p) => ({ value: p.minutes, label: p.label })),
+    () => prefs.defaultRemind.offset,
+    (value) => {
+      prefs.defaultRemind.offset = Number(value);
+      saveDefaultRemind();
+    }
+  );
+  const note = document.createElement('div');
+  note.className = 'pref-note';
+  note.textContent = 'For new tasks and events with a due date.';
+  container.appendChild(note);
+
+  // What plays when a reminder goes off. The button plays the chosen sound, since
+  // choosing the one that is already chosen is not a change and so makes no noise.
+  const soundField = document.createElement('div');
+  soundField.className = 'pref-field';
+  const soundLabel = document.createElement('label');
+  soundLabel.textContent = 'Sound';
+  const soundRow = document.createElement('div');
+  soundRow.className = 'pref-row';
+
+  const soundSelect = document.createElement('select');
+  soundSelect.className = 'pref-select';
+  soundSelect.id = 'reminder-sound';
+  soundLabel.htmlFor = soundSelect.id;
+  for (const sound of SOUND_CHOICES) {
+    const option = document.createElement('option');
+    option.value = sound.id;
+    option.textContent = sound.label;
+    soundSelect.appendChild(option);
+  }
+  soundSelect.value = reminderSound;
+
+  const soundPlay = document.createElement('button');
+  soundPlay.type = 'button';
+  soundPlay.className = 'sound-play';
+  soundPlay.title = 'Play this sound';
+  soundPlay.setAttribute('aria-label', 'Play this sound');
+  soundPlay.innerHTML = PLAY_ICON;
+  // "System default" is the toast's own sound and "None" is silence: neither can
+  // be played from here.
+  const syncSoundPlay = () => {
+    soundPlay.disabled = !REMINDER_SOUNDS.some((s) => s.id === soundSelect.value);
+  };
+  soundSelect.addEventListener('change', () => {
+    applyReminderSound(soundSelect.value);
+    syncSoundPlay();
+    playReminderSound(soundSelect.value, true);
+  });
+  soundPlay.addEventListener('click', () => playReminderSound(soundSelect.value, true));
+  syncSoundPlay();
+
+  soundRow.append(soundSelect, soundPlay);
+  soundField.append(soundLabel, soundRow);
+  container.appendChild(soundField);
+
+  heading('Dates and times');
+  select('Clock', CLOCK_CHOICES, () => prefs.clock, (value) => {
+    prefs.clock = value;
+    writePref(PREF_CLOCK_KEY, value === 'system' ? null : value);
+    applyClock();
+  });
+  select('Week starts on', WEEK_START_CHOICES, () => prefs.weekStart, (value) => {
+    prefs.weekStart = value;
+    writePref(PREF_WEEK_START_KEY, value === 'system' ? null : value);
+    applyWeekStart();
+  });
+
+  // What the page remembers is not all that can change under it: the tray menu
+  // moves "always on top", and the start-with-Windows setting belongs to the system.
+  window.tudo.onAlwaysOnTopChanged((on) => {
+    prefs.alwaysOnTop = on;
+    writePref(PREF_ALWAYS_ON_TOP_KEY, on ? null : '0');
+    syncPreferencesPanel();
+  });
+  syncPreferencesPanel = () => {
+    for (const sync of syncers) sync();
+    remindWhen.disabled = !prefs.defaultRemind.on;
+  };
+
+  // The main process starts from "on top", and from a toast with a sound of its
+  // own; tell it what was chosen.
+  window.tudo.setAlwaysOnTop(prefs.alwaysOnTop);
+  applyReminderSound(reminderSound);
+  applyClock(false);
+  syncPreferencesPanel();
+}
+
+// Assigned when the Preferences page is built; the settings menu calls it each
+// time it opens, so what it shows is what is true now.
+let syncPreferencesPanel = () => {};
+
+// Everything that shows a time is drawn again; the date picker's fields look at
+// the clock whenever they are shown, and its AM and PM buttons follow the flag.
+function applyClock(redraw = true) {
+  document.documentElement.dataset.clock12 = use12h() ? '1' : '0';
+  if (!redraw) return;
+  render();
+  syncReminders();
+}
+
+function applyWeekStart() {
+  // The weekday names are drawn once, in the order the week started with.
+  document.getElementById('cal-weekdays').replaceChildren();
+  if (view === 'calendar') renderCalendar();
+}
+
+/* ---------------------------------------------------------- sorting columns */
+
+// Each column can keep itself in order. Sorting only changes how a column is
+// shown: the order the cards were dragged into is left alone underneath, so
+// going back to Manual order puts everything back where it was.
+const SORT_MODES = [
+  { id: 'manual', label: 'Manual order' },
+  { id: 'due-asc', label: 'Due date, soonest first' },
+  { id: 'due-desc', label: 'Due date, latest first' },
+  { id: 'title-asc', label: 'Title, A to Z' },
+  { id: 'title-desc', label: 'Title, Z to A' },
+  { id: 'importance-desc', label: 'Importance, high to low' },
+  { id: 'importance-asc', label: 'Importance, low to high' },
+];
+const SORT_MANUAL = 'manual';
+const SORT_KEY = 'tudo-column-sort';
+const SORT_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M7 4v16"></path>
+  <path d="M3 16l4 4 4-4"></path>
+  <path d="M17 20V4"></path>
+  <path d="M13 8l4-4 4 4"></path>
+</svg>`;
+const CHECK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <polyline points="20 6 9 17 4 12"></polyline>
+</svg>`;
+
+function loadColumnSort() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(SORT_KEY));
+  } catch {
+    saved = null;
+  }
+  const sorts = {};
+  for (const status of STATUSES) {
+    const mode = saved && typeof saved === 'object' ? saved[status] : null;
+    sorts[status] = SORT_MODES.some((m) => m.id === mode) ? mode : SORT_MANUAL;
+  }
+  return sorts;
+}
+
+let columnSort = loadColumnSort();
+
+function sortLabel(mode) {
+  return SORT_MODES.find((m) => m.id === mode).label;
+}
+
+// Whichever way round, a card with nothing to sort it by goes to the bottom
+// rather than the top, where it would push out the ones that do have something.
+function compareOptional(a, b, direction) {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a < b ? -direction : a > b ? direction : 0;
+}
+
+function sortKey(task, field) {
+  if (field === 'due') return typeof task.due === 'string' && task.due ? task.due : null;
+  // Not Set sits at the bottom of the scale, but is not a rank to sort by.
+  const rank = IMPORTANCE_LEVELS.indexOf(task.importance);
+  return rank > 0 ? rank : null;
+}
+
+// The cards of a column in the order they are to be shown. Ties keep the order
+// they have in the column, so a sort never shuffles cards that are equal.
+function orderedTasks(status) {
+  const tasks = state[status];
+  const mode = columnSort[status];
+  if (mode === SORT_MANUAL) return tasks;
+
+  const [field, dir] = mode.split('-');
+  const direction = dir === 'desc' ? -1 : 1;
+  const compare =
+    field === 'title'
+      ? (a, b) => direction * a.text.localeCompare(b.text, undefined, { numeric: true, sensitivity: 'base' })
+      : (a, b) => compareOptional(sortKey(a, field), sortKey(b, field), direction);
+
+  return tasks
+    .map((task, index) => ({ task, index }))
+    .sort((a, b) => compare(a.task, b.task) || a.index - b.index)
+    .map((entry) => entry.task);
+}
+
+function setColumnSort(status, mode) {
+  columnSort[status] = mode;
+  try {
+    localStorage.setItem(SORT_KEY, JSON.stringify(columnSort));
+  } catch {
+    // Not saved; the column stays sorted until the app closes.
+  }
+  syncSortButtons();
+  render();
+}
+
+function syncSortButtons() {
+  for (const status of STATUSES) {
+    const btn = document.querySelector(`.col[data-status="${status}"] .col-sort`);
+    if (!btn) continue;
+    const sorted = columnSort[status] !== SORT_MANUAL;
+    btn.classList.toggle('active', sorted);
+    btn.title = sorted ? `Sorted: ${sortLabel(columnSort[status]).toLowerCase()}` : 'Sort this column';
+  }
+}
+
+// One menu, moved to whichever column's button opened it. It is fixed to the
+// window rather than hung off the column, which would clip it.
+let sortMenu = null;
+let sortMenuFor = null;
+
+function closeSortMenu() {
+  if (!sortMenu) return;
+  sortMenu.hidden = true;
+  if (sortMenuFor) sortMenuFor.setAttribute('aria-expanded', 'false');
+  sortMenuFor = null;
+}
+
+function openSortMenu(status, button) {
+  sortMenu.replaceChildren();
+  for (const mode of SORT_MODES) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'sort-item';
+    item.setAttribute('role', 'menuitemradio');
+    const selected = columnSort[status] === mode.id;
+    item.setAttribute('aria-checked', String(selected));
+    item.classList.toggle('selected', selected);
+
+    const check = document.createElement('span');
+    check.className = 'sort-check';
+    check.innerHTML = selected ? CHECK_ICON : '';
+    item.appendChild(check);
+    item.appendChild(document.createTextNode(mode.label));
+
+    item.addEventListener('click', () => {
+      closeSortMenu();
+      setColumnSort(status, mode.id);
+    });
+    sortMenu.appendChild(item);
+  }
+
+  sortMenu.hidden = false;
+  sortMenuFor = button;
+  button.setAttribute('aria-expanded', 'true');
+
+  // Under the button with its right edges level, and kept inside the window.
+  const rect = button.getBoundingClientRect();
+  const width = sortMenu.offsetWidth;
+  const height = sortMenu.offsetHeight;
+  const margin = 6;
+  const left = Math.min(Math.max(rect.right - width, margin), window.innerWidth - width - margin);
+  const below = rect.bottom + 4;
+  const top = below + height > window.innerHeight - margin ? Math.max(rect.top - height - 4, margin) : below;
+  sortMenu.style.left = `${left}px`;
+  sortMenu.style.top = `${top}px`;
+
+  const current = sortMenu.querySelector('.selected') || sortMenu.firstElementChild;
+  current.focus();
+}
+
+function setupColumnSort() {
+  sortMenu = document.createElement('div');
+  sortMenu.id = 'sort-menu';
+  sortMenu.setAttribute('role', 'menu');
+  sortMenu.setAttribute('aria-label', 'Sort this column');
+  sortMenu.hidden = true;
+  document.body.appendChild(sortMenu);
+
+  for (const status of STATUSES) {
+    const head = document.querySelector(`.col[data-status="${status}"] .col-head`);
+    const count = head.querySelector('.count');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'col-sort';
+    button.setAttribute('aria-haspopup', 'menu');
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-label', `Sort ${COLUMN_LABELS[status]}`);
+    button.innerHTML = SORT_ICON;
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasOpen = sortMenuFor === button;
+      closeSortMenu();
+      if (!wasOpen) openSortMenu(status, button);
+    });
+
+    // The button and the count share the right-hand side of the heading.
+    const tools = document.createElement('div');
+    tools.className = 'col-tools';
+    head.appendChild(tools);
+    tools.appendChild(button);
+    tools.appendChild(count);
+  }
+
+  // Arrow keys move between the choices, as they do in any menu.
+  sortMenu.addEventListener('keydown', (e) => {
+    const items = Array.from(sortMenu.querySelectorAll('.sort-item'));
+    const at = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') items[(at + 1) % items.length].focus();
+    else if (e.key === 'ArrowUp') items[(at - 1 + items.length) % items.length].focus();
+    else return;
+    e.preventDefault();
+  });
+  document.addEventListener('click', (e) => {
+    if (sortMenu.hidden || sortMenu.contains(e.target)) return;
+    closeSortMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || sortMenu.hidden) return;
+    const opener = sortMenuFor;
+    closeSortMenu();
+    if (opener) opener.focus();
+  });
+  // A menu left behind would be pointing at a spot that has since moved.
+  window.addEventListener('resize', closeSortMenu);
+
+  syncSortButtons();
 }
 
 // Appearance, columns and sync all live behind the one gear in the titlebar. The
@@ -493,6 +1166,7 @@ function setupSettingsMenu() {
     }
     // Every visit starts from the list alone.
     closePane();
+    syncPreferencesPanel();
     panel.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
   });
@@ -532,6 +1206,7 @@ function dateKey(date) {
 // 0 for Sunday, matching Date.getDay(). Intl counts from Monday as 1, and not
 // every build has the week data, so Monday is the fallback.
 function firstDayOfWeek() {
+  if (prefs.weekStart !== 'system') return Number(prefs.weekStart);
   try {
     const locale = new Intl.Locale(navigator.language);
     const info = typeof locale.getWeekInfo === 'function' ? locale.getWeekInfo() : locale.weekInfo;
@@ -1146,7 +1821,7 @@ function dayHeading(key) {
 function formatTime(due) {
   const date = new Date(due);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', ...clockOptions() });
 }
 
 // The names follow the user's locale, and the order follows their week.
@@ -1272,15 +1947,15 @@ function setupNewTaskDialog() {
       return;
     }
 
+    const due = `${newTaskDay}T${newTaskTime.getValue()}`;
     state.todo.push({
       id: uid(),
       text,
-      due: `${newTaskDay}T${newTaskTime.getValue()}`,
+      due,
       importance: 'Not Set',
       showCountdown: true,
       collapsed: false,
-      remind: false,
-      remindOffset: 0,
+      ...defaultReminderFor(due),
       reminderFired: false,
       additionalDescription: '',
     });
@@ -1595,12 +2270,17 @@ let eventDialog = null;
 
 function openEventDialog({ day, event = null }) {
   const startDay = event ? event.due.slice(0, 10) : day;
-  const offset = event ? clampRemindOffset(event.remindOffset) : 0;
+  const due = event ? event.due : `${startDay}T${DEFAULT_DUE_TIME}`;
+  // A new event starts with the reminder chosen in Preferences, if any.
+  const start = event
+    ? { remind: event.remind, remindOffset: clampRemindOffset(event.remindOffset) }
+    : defaultReminderFor(due);
+  const offset = start.remindOffset;
   const draft = {
     additionalDescription: event ? event.additionalDescription || '' : '',
     allDay: event ? event.allDay : false,
-    due: event ? event.due : `${startDay}T${DEFAULT_DUE_TIME}`,
-    remind: event ? event.remind : false,
+    due,
+    remind: start.remind,
     remindOffset: offset,
     // Keeps "Custom..." selected for a value that happens to match a preset.
     remindCustom: !isRemindPreset(offset),
@@ -1857,6 +2537,7 @@ function formatDue(due) {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    ...clockOptions(),
   });
 }
 
@@ -1898,6 +2579,19 @@ function hasContent(html) {
   const text = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
   return text.length > 0;
 }
+
+// The page starts out as a loading screen (see index.html). This is where it stops
+// being one: the real cards are in, so the stand-ins are gone, and the body's
+// loading class comes off. For a moment it says it has just loaded, which is what
+// lets the cards arrive with a short fade instead of appearing. Safe to call more
+// than once; the timer below calls it too, in case reading the tasks never ends.
+function finishLoading() {
+  if (!document.body.classList.contains('is-loading')) return;
+  document.body.classList.remove('is-loading');
+  document.body.classList.add('just-loaded');
+  setTimeout(() => document.body.classList.remove('just-loaded'), 700);
+}
+setTimeout(finishLoading, 10000);
 
 async function init() {
   const loaded = await window.tudo.loadTasks();
@@ -1943,19 +2637,26 @@ async function init() {
   setupTrashZone();
   setupThemeOptions();
   setupColumnsOptions();
+  setupColumnSort();
   setupFontOptions();
+  setupPreferences();
   setupSettingsMenu();
   setupCalendar();
   setupNewTaskDialog();
   setupEventDialog();
   setupTaskDetail();
   setupViewToggle();
+  // The view and the columns are now as they were left, so nothing will jump.
+  finishLoading();
 
   document.getElementById('btn-min').addEventListener('click', () => window.tudo.minimize());
   document.getElementById('btn-close').addEventListener('click', () => window.tudo.close());
 
   setupUpdateCheck();
-  window.tudo.onReminderFired(markReminderFired);
+  window.tudo.onReminderFired((id) => {
+    playReminderSound();
+    markReminderFired(id);
+  });
   syncReminders();
   setInterval(updateCountdowns, 1000);
   setupSync();
@@ -1970,7 +2671,7 @@ function render() {
   for (const status of STATUSES) {
     const list = document.getElementById(`list-${status}`);
     list.innerHTML = '';
-    for (const task of state[status]) {
+    for (const task of orderedTasks(status)) {
       list.appendChild(renderTask(task, status));
     }
     document.getElementById(`count-${status}`).textContent = state[status].length;
@@ -2058,6 +2759,7 @@ function renderTask(task, status) {
 
     appendDueRow(li, task);
     if (!collapsed) appendTaskDetails(li, task);
+    else if (prefs.foldedImportance) appendImportanceBadge(li, task);
   }
 
   handle.addEventListener('dragstart', (e) => {
@@ -2087,7 +2789,8 @@ function hasFoldableDetails(task) {
   return Boolean(
     (task.remind && task.due) ||
     hasContent(task.additionalDescription) ||
-    (task.importance && task.importance !== 'Not Set')
+    // Kept on show when Preferences says so, which leaves nothing to fold.
+    (!prefs.foldedImportance && task.importance && task.importance !== 'Not Set')
   );
 }
 
@@ -2162,15 +2865,19 @@ function appendTaskDetails(li, task) {
     li.appendChild(desc);
   }
 
-  if (task.importance && task.importance !== 'Not Set') {
-    const meta = document.createElement('div');
-    meta.className = 'card-meta';
-    const badge = document.createElement('span');
-    badge.className = `badge badge-${task.importance.toLowerCase().replace(/\s+/g, '-')}`;
-    badge.textContent = task.importance;
-    meta.appendChild(badge);
-    li.appendChild(meta);
-  }
+  appendImportanceBadge(li, task);
+}
+
+// Also what a folded card keeps, when Preferences says to.
+function appendImportanceBadge(li, task) {
+  if (!task.importance || task.importance === 'Not Set') return;
+  const meta = document.createElement('div');
+  meta.className = 'card-meta';
+  const badge = document.createElement('span');
+  badge.className = `badge badge-${task.importance.toLowerCase().replace(/\s+/g, '-')}`;
+  badge.textContent = task.importance;
+  meta.appendChild(badge);
+  li.appendChild(meta);
 }
 
 /* ------------------------------------------------------------ task details */
@@ -2261,8 +2968,6 @@ function setupTaskDetail() {
 const DEFAULT_DUE_TIME = '09:00';
 // The times people most often mean, one tap away.
 const TIME_PRESETS = ['09:00', '12:00', '17:00', '21:00'];
-const USE_12H =
-  new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 === true;
 const DAY_PICKER_ROWS = 6;
 
 function pad2(n) {
@@ -2294,7 +2999,7 @@ function parseDueValue(value) {
 function formatDueShort(due) {
   const date = new Date(due);
   if (Number.isNaN(date.getTime())) return '';
-  const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...clockOptions() };
   if (date.getFullYear() !== new Date().getFullYear()) options.year = 'numeric';
   return date.toLocaleString(undefined, options);
 }
@@ -2316,9 +3021,9 @@ function formatDayShort(due, full = false) {
 
 function formatPresetTime(time) {
   const { hour, minute } = parseTimeValue(time);
-  const options = USE_12H
-    ? { hour: 'numeric', minute: minute ? '2-digit' : undefined }
-    : { hour: '2-digit', minute: '2-digit' };
+  const options = use12h()
+    ? { hour: 'numeric', minute: minute ? '2-digit' : undefined, ...clockOptions() }
+    : { hour: '2-digit', minute: '2-digit', ...clockOptions() };
   return new Date(2000, 0, 1, hour, minute).toLocaleTimeString(undefined, options);
 }
 
@@ -2372,13 +3077,15 @@ function createTimeField({ value = DEFAULT_DUE_TIME, onChange = () => {} } = {})
   const presetButtons = [];
 
   const show = () => {
-    hourInput.value = USE_12H ? String(hour % 12 || 12) : pad2(hour);
+    hourInput.value = use12h() ? String(hour % 12 || 12) : pad2(hour);
     minuteInput.value = pad2(minute);
     for (const { button, pm } of ampmButtons) {
       button.setAttribute('aria-pressed', String(pm === hour >= 12));
     }
     for (const { button, time } of presetButtons) {
       button.classList.toggle('is-active', time === getValue());
+      // Written again each time, in case the clock was changed since it was made.
+      button.textContent = formatPresetTime(time);
     }
   };
 
@@ -2403,7 +3110,7 @@ function createTimeField({ value = DEFAULT_DUE_TIME, onChange = () => {} } = {})
     }
     // On a 12-hour clock 1-12 keep the current AM or PM, and 13-23 are taken as
     // typed, so "17" lands on 5 PM instead of being refused.
-    update(USE_12H && n <= 12 ? (n % 12) + (hour >= 12 ? 12 : 0) : n, minute);
+    update(use12h() && n <= 12 ? (n % 12) + (hour >= 12 ? 12 : 0) : n, minute);
   };
 
   const commitMinute = () => {
@@ -2423,7 +3130,7 @@ function createTimeField({ value = DEFAULT_DUE_TIME, onChange = () => {} } = {})
   hourInput.addEventListener('input', () => {
     hourInput.value = hourInput.value.replace(/\D/g, '');
     const n = parseInt(hourInput.value, 10);
-    if (hourInput.value.length === 2 || n >= (USE_12H ? 2 : 3)) {
+    if (hourInput.value.length === 2 || n >= (use12h() ? 2 : 3)) {
       commitHour();
       minuteInput.focus();
     }
@@ -2466,7 +3173,7 @@ function createTimeField({ value = DEFAULT_DUE_TIME, onChange = () => {} } = {})
     );
   }
 
-  if (USE_12H) {
+  {
     const ampm = document.createElement('div');
     ampm.className = 'time-ampm';
     ampm.setAttribute('role', 'group');
@@ -2928,6 +3635,11 @@ function createReminderControls(draft, hasDate = () => !!draft.due) {
 
   const refresh = () => {
     const available = hasDate();
+    // The draft can be changed from outside (a default reminder arriving with the
+    // first due date), so the controls show what it holds.
+    box.checked = draft.remind;
+    select.value = draft.remindCustom ? REMIND_CUSTOM : String(draft.remindOffset);
+    if (!draft.remindCustom) showOffset();
     box.disabled = !available;
     toggle.classList.toggle('is-disabled', !available);
     toggle.title = available ? '' : 'Set a due date to add a reminder';
@@ -2960,7 +3672,18 @@ function renderEditRow(task) {
   const dueField = createDueField({
     value: draft.due,
     onChange: (due) => {
+      const hadDue = !!draft.due;
       draft.due = due;
+      // A card's first due date brings the default reminder with it, unless one
+      // is already set. Later changes to the date leave the reminder alone.
+      if (!hadDue && due && !draft.remind) {
+        const fields = defaultReminderFor(due);
+        if (fields.remind) {
+          draft.remind = true;
+          draft.remindOffset = fields.remindOffset;
+          draft.remindCustom = false;
+        }
+      }
       syncCountdownToggle();
       // The reminder is measured back from this date, so it follows it.
       syncRemindRow();
@@ -3095,7 +3818,10 @@ function setupDropZones() {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       list.classList.add('drag-over');
-      showDropIndicator(list, getDropIndex(list, e.clientY));
+      // A sorted column puts a card where it belongs, so there is no spot to aim at.
+      if (columnSort[list.dataset.status] === SORT_MANUAL) {
+        showDropIndicator(list, getDropIndex(list, e.clientY));
+      }
     });
     list.addEventListener('dragleave', (e) => {
       if (list.contains(e.relatedTarget)) return;
@@ -3117,8 +3843,15 @@ function setupDropZones() {
       if (!id || !from) return;
       const idx = state[from].findIndex((t) => t.id === id);
       if (idx === -1) return;
+
+      const sorted = columnSort[to] !== SORT_MANUAL;
+      if (sorted && from === to) {
+        showToast(`Sorted by ${sortLabel(columnSort[to]).toLowerCase()}. Switch to manual order to rearrange`);
+        return;
+      }
       const [task] = state[from].splice(idx, 1);
-      state[to].splice(insertAt, 0, task);
+      // Into a sorted column the card goes on the end; the sort puts it in its place.
+      state[to].splice(sorted ? state[to].length : insertAt, 0, task);
       persistAndRender();
     });
   });
